@@ -9,9 +9,18 @@ import {
     TextInput,
     View,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import Toast from 'react-native-toast-message';
 
+import CategoryPicker from '@/components/ui/CategoryPicker';
 import { Colors } from '@/constants/theme';
+import { type CategoryDef } from '@/utils/categories';
+import {
+    DEFAULT_PASSWORD_OPTIONS,
+    generatePassword,
+    type PasswordOptions,
+} from '@/utils/password-generator';
 
 type VaultFormValues = {
     title: string;
@@ -25,6 +34,9 @@ type VaultFormModalProps = {
     initialValues?: Partial<VaultFormValues>;
     onClose: () => void;
     onSubmit: (values: VaultFormValues) => Promise<void> | void;
+    categoryKey?: string | null;
+    onCategoryChange?: (key: string | null) => void;
+    categories?: CategoryDef[];
 };
 
 const EMPTY_VALUES: VaultFormValues = {
@@ -33,9 +45,12 @@ const EMPTY_VALUES: VaultFormValues = {
     password: '',
 };
 
-export default function VaultFormModal({ visible, mode, initialValues, onClose, onSubmit }: VaultFormModalProps) {
+export default function VaultFormModal({ visible, mode, initialValues, onClose, onSubmit, categoryKey, onCategoryChange, categories }: VaultFormModalProps) {
     const [formValues, setFormValues] = useState<VaultFormValues>(EMPTY_VALUES);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showGenerator, setShowGenerator] = useState(false);
+    const [generatorOptions, setGeneratorOptions] = useState<PasswordOptions>(DEFAULT_PASSWORD_OPTIONS);
+    const [generatedPassword, setGeneratedPassword] = useState('');
 
     useEffect(() => {
         if (visible) {
@@ -44,6 +59,9 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
                 username: initialValues?.username ?? '',
                 password: initialValues?.password ?? '',
             });
+            setShowGenerator(false);
+            setGeneratedPassword('');
+            setGeneratorOptions(DEFAULT_PASSWORD_OPTIONS);
         }
     }, [initialValues, visible]);
 
@@ -70,6 +88,43 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleGenerate = () => {
+        const password = generatePassword(generatorOptions);
+        setGeneratedPassword(password);
+    };
+
+    const handleUseGenerated = () => {
+        if (generatedPassword) {
+            handleChange('password', generatedPassword);
+            setShowGenerator(false);
+            Toast.show({ type: 'success', text1: 'Password applied.' });
+        }
+    };
+
+    const handleCopyGenerated = async () => {
+        if (generatedPassword) {
+            await Clipboard.setStringAsync(generatedPassword);
+            Toast.show({ type: 'success', text1: 'Password copied to clipboard.' });
+        }
+    };
+
+    const toggleOption = (key: keyof Omit<PasswordOptions, 'length'>) => {
+        setGeneratorOptions((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const renderOptionChip = (key: keyof Omit<PasswordOptions, 'length'>, label: string) => {
+        const active = generatorOptions[key];
+        return (
+            <Pressable
+                key={key}
+                style={[genStyles.chip, active && genStyles.chipActive]}
+                onPress={() => toggleOption(key)}
+            >
+                <Text style={[genStyles.chipLabel, active && genStyles.chipLabelActive]}>{label}</Text>
+            </Pressable>
+        );
     };
 
     return (
@@ -101,7 +156,22 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
                             />
                         </View>
                         <View style={styles.field}>
-                            <Text style={styles.label}>Password</Text>
+                            <View style={styles.labelRow}>
+                                <Text style={styles.label}>Password</Text>
+                                <Pressable
+                                    style={genStyles.toggleButton}
+                                    onPress={() => setShowGenerator((prev) => !prev)}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="auto-fix"
+                                        size={16}
+                                        color={Colors.light.tint}
+                                    />
+                                    <Text style={genStyles.toggleLabel}>
+                                        {showGenerator ? 'Hide Generator' : 'Generate'}
+                                    </Text>
+                                </Pressable>
+                            </View>
                             <TextInput
                                 style={styles.input}
                                 placeholder="Enter password"
@@ -111,6 +181,92 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
                                 onChangeText={(value) => handleChange('password', value)}
                             />
                         </View>
+
+                        {categories && onCategoryChange ? (
+                            <View style={styles.field}>
+                                <Text style={styles.label}>Category</Text>
+                                <CategoryPicker
+                                    categories={categories}
+                                    selected={categoryKey ?? null}
+                                    onSelect={onCategoryChange}
+                                />
+                            </View>
+                        ) : null}
+
+                        {showGenerator ? (
+                            <View style={genStyles.container}>
+                                <Text style={genStyles.sectionLabel}>Password Generator</Text>
+
+                                <View style={genStyles.lengthRow}>
+                                    <Text style={genStyles.lengthLabel}>Length: {generatorOptions.length}</Text>
+                                    <View style={genStyles.lengthControls}>
+                                        <Pressable
+                                            style={genStyles.lengthButton}
+                                            onPress={() =>
+                                                setGeneratorOptions((prev) => ({
+                                                    ...prev,
+                                                    length: Math.max(8, prev.length - 1),
+                                                }))
+                                            }
+                                        >
+                                            <MaterialCommunityIcons name="minus" size={18} color="#0f172a" />
+                                        </Pressable>
+                                        <View style={genStyles.lengthBar}>
+                                            <View
+                                                style={[
+                                                    genStyles.lengthFill,
+                                                    { width: `${((generatorOptions.length - 8) / 24) * 100}%` },
+                                                ]}
+                                            />
+                                        </View>
+                                        <Pressable
+                                            style={genStyles.lengthButton}
+                                            onPress={() =>
+                                                setGeneratorOptions((prev) => ({
+                                                    ...prev,
+                                                    length: Math.min(32, prev.length + 1),
+                                                }))
+                                            }
+                                        >
+                                            <MaterialCommunityIcons name="plus" size={18} color="#0f172a" />
+                                        </Pressable>
+                                    </View>
+                                </View>
+
+                                <View style={genStyles.chipRow}>
+                                    {renderOptionChip('uppercase', 'A-Z')}
+                                    {renderOptionChip('lowercase', 'a-z')}
+                                    {renderOptionChip('numbers', '0-9')}
+                                    {renderOptionChip('symbols', '!@#')}
+                                </View>
+
+                                <Pressable style={genStyles.generateButton} onPress={handleGenerate}>
+                                    <MaterialCommunityIcons name="refresh" size={18} color="#fff" />
+                                    <Text style={genStyles.generateLabel}>Generate</Text>
+                                </Pressable>
+
+                                {generatedPassword ? (
+                                    <View style={genStyles.resultContainer}>
+                                        <Text style={genStyles.resultText} selectable numberOfLines={2}>
+                                            {generatedPassword}
+                                        </Text>
+                                        <View style={genStyles.resultActions}>
+                                            <Pressable style={genStyles.resultButton} onPress={handleUseGenerated}>
+                                                <MaterialCommunityIcons name="check" size={18} color="#fff" />
+                                                <Text style={genStyles.resultButtonLabel}>Use</Text>
+                                            </Pressable>
+                                            <Pressable
+                                                style={[genStyles.resultButton, genStyles.copyButton]}
+                                                onPress={handleCopyGenerated}
+                                            >
+                                                <MaterialCommunityIcons name="content-copy" size={16} color={Colors.light.tint} />
+                                                <Text style={genStyles.copyButtonLabel}>Copy</Text>
+                                            </Pressable>
+                                        </View>
+                                    </View>
+                                ) : null}
+                            </View>
+                        ) : null}
                     </ScrollView>
                     <View style={styles.buttonRow}>
                         <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose} disabled={isSubmitting}>
@@ -164,6 +320,11 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: 'rgba(15, 23, 42, 0.7)',
     },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
     input: {
         borderWidth: 1,
         borderColor: 'rgba(15, 23, 42, 0.12)',
@@ -200,5 +361,140 @@ const styles = StyleSheet.create({
     },
     cancelLabel: {
         color: '#0f172a',
+    },
+});
+
+const genStyles = StyleSheet.create({
+    toggleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    toggleLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: Colors.light.tint,
+    },
+    container: {
+        backgroundColor: 'rgba(15, 23, 42, 0.04)',
+        borderRadius: 16,
+        padding: 16,
+        gap: 14,
+    },
+    sectionLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#0f172a',
+    },
+    lengthRow: {
+        gap: 8,
+    },
+    lengthLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: 'rgba(15, 23, 42, 0.7)',
+    },
+    lengthControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    lengthButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        backgroundColor: 'rgba(15, 23, 42, 0.08)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    lengthBar: {
+        flex: 1,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: 'rgba(15, 23, 42, 0.1)',
+        overflow: 'hidden',
+    },
+    lengthFill: {
+        height: '100%',
+        backgroundColor: Colors.light.tint,
+        borderRadius: 3,
+    },
+    chipRow: {
+        flexDirection: 'row',
+        gap: 8,
+        flexWrap: 'wrap',
+    },
+    chip: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 12,
+        backgroundColor: 'rgba(15, 23, 42, 0.08)',
+    },
+    chipActive: {
+        backgroundColor: Colors.light.tint,
+    },
+    chipLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#0f172a',
+    },
+    chipLabelActive: {
+        color: '#fff',
+    },
+    generateButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: Colors.light.tint,
+        paddingVertical: 10,
+        borderRadius: 12,
+    },
+    generateLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#fff',
+    },
+    resultContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 12,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(15, 23, 42, 0.08)',
+    },
+    resultText: {
+        fontSize: 15,
+        fontWeight: '600',
+        fontFamily: 'monospace',
+        color: '#0f172a',
+        letterSpacing: 0.5,
+    },
+    resultActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    resultButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: Colors.light.tint,
+        paddingVertical: 8,
+        borderRadius: 10,
+    },
+    resultButtonLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#fff',
+    },
+    copyButton: {
+        backgroundColor: 'rgba(10, 126, 164, 0.12)',
+    },
+    copyButtonLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: Colors.light.tint,
     },
 });
