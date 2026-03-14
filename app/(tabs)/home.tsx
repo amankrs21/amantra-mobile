@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
     Keyboard,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -24,66 +22,22 @@ const WEATHER_API_KEY = process.env.EXPO_PUBLIC_WEATHER_API_KEY;
 
 const WeatherSchema = z.object({
     name: z.string(),
-    sys: z.object({
-        country: z.string().optional(),
-    }),
-    weather: z
-        .array(
-            z.object({
-                description: z.string(),
-                icon: z.string(),
-            }),
-        )
-        .nonempty(),
-    main: z.object({
-        temp: z.number(),
-        feels_like: z.number(),
-        temp_min: z.number(),
-        temp_max: z.number(),
-        humidity: z.number(),
-        pressure: z.number(),
-    }),
-    wind: z.object({
-        speed: z.number(),
-    }),
+    sys: z.object({ country: z.string().optional() }),
+    weather: z.array(z.object({ description: z.string(), icon: z.string() })).nonempty(),
+    main: z.object({ temp: z.number(), feels_like: z.number(), temp_min: z.number(), temp_max: z.number(), humidity: z.number(), pressure: z.number() }),
+    wind: z.object({ speed: z.number() }),
 });
-
 type WeatherPayload = z.infer<typeof WeatherSchema>;
 
-type WeatherCountry = {
-    name?: { common?: string };
-    flags?: { png?: string };
-    flag?: string;
-};
-
 const TOOL_CARDS = [
-    {
-        key: 'vault',
-        title: 'Vault',
-        description: 'Passwords and encrypted notes in one place.',
-        icon: 'shield-lock',
-        accent: ['#2563eb', '#1d4ed8'],
-        route: '/(tabs)/vault',
-    },
-    {
-        key: 'watchlist',
-        title: 'Watchlist',
-        description: 'Track movies, series, and shows you love.',
-        icon: 'movie-open',
-        accent: ['#0ea5e9', '#22d3ee'],
-        route: '/(tabs)/watchlist',
-    },
-    {
-        key: 'newsletter',
-        title: 'Newsletter',
-        description: 'Curated tech, AI, and entertainment news.',
-        icon: 'newspaper-variant',
-        accent: ['#8b5cf6', '#6d28d9'],
-        route: '/(tabs)/newsletter',
-    },
+    { key: 'vault', title: 'Vault', description: 'Passwords & encrypted notes.', icon: 'shield-lock', color: '#2563eb', route: '/(tabs)/vault' },
+    { key: 'watchlist', title: 'Watchlist', description: 'Track movies & series.', icon: 'movie-open', color: '#8b5cf6', route: '/(tabs)/watchlist' },
+    { key: 'newsletter', title: 'Newsletter', description: 'Curated AI & tech news.', icon: 'newspaper-variant', color: '#0ea5e9', route: '/(tabs)/newsletter' },
 ];
 
 const WEATHER_TTL_MS = 1000 * 60 * 30;
+const k2c = (v: number) => Math.round(v - 273.15);
+const capitalize = (s: string) => s.split(' ').map((w) => w ? w[0].toUpperCase() + w.slice(1) : '').join(' ');
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -94,169 +48,132 @@ export default function HomeScreen() {
     const [now, setNow] = useState(() => new Date());
     const [city, setCity] = useState('New York');
     const [weather, setWeather] = useState<WeatherPayload | null>(null);
-    const [country, setCountry] = useState<WeatherCountry | null>(null);
     const [isFetching, setIsFetching] = useState(false);
     const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
 
-    useEffect(() => {
-        const timer = setInterval(() => setNow(new Date()), 10000);
-        return () => clearInterval(timer);
-    }, []);
-
-    useEffect(() => {
-        if (!lastFetchedAt || Date.now() - lastFetchedAt > WEATHER_TTL_MS) {
-            void handleSearch('New York', true);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    useEffect(() => { const t = setInterval(() => setNow(new Date()), 10000); return () => clearInterval(t); }, []);
+    useEffect(() => { if (!lastFetchedAt || Date.now() - lastFetchedAt > WEATHER_TTL_MS) void handleSearch('New York', true); }, []); // eslint-disable-line
 
     const timeLabel = useMemo(() => now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), [now]);
     const dateLabel = useMemo(() => now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }), [now]);
 
-    const fetchCountry = useCallback(async (countryCode?: string) => {
-        if (!countryCode) { setCountry(null); return; }
+    const handleSearch = useCallback(async (inputCity?: string, silent?: boolean) => {
+        if (!WEATHER_API_KEY) { if (!silent) Toast.show({ type: 'info', text1: 'Weather unavailable.' }); return; }
+        const query = (inputCity ?? city).trim();
+        if (!query) return;
+        setIsFetching(true);
         try {
-            const response = await fetch(`https://restcountries.com/v3.1/alpha/${countryCode}`);
-            if (!response.ok) return;
-            const [countryPayload] = (await response.json()) as WeatherCountry[];
-            setCountry(countryPayload ?? null);
-        } catch (error) {
-            console.error('Failed to fetch country details', error);
-        }
-    }, []);
-
-    const handleSearch = useCallback(
-        async (inputCity?: string, silent?: boolean) => {
-            if (!WEATHER_API_KEY) {
-                if (!silent) Toast.show({ type: 'info', text1: 'Weather unavailable', text2: 'Set EXPO_PUBLIC_WEATHER_API_KEY to enable weather lookup.' });
-                return;
-            }
-            const query = (inputCity ?? city).trim();
-            if (!query) { Toast.show({ type: 'info', text1: 'Enter a city to search weather.' }); return; }
-
-            setIsFetching(true);
-            try {
-                const response = await fetch(`${WEATHER_API_URL}?q=${encodeURIComponent(query)}&appid=${WEATHER_API_KEY}`);
-                if (!response.ok) throw new Error('City not found');
-                const payload = await response.json();
-                const parsed = WeatherSchema.safeParse(payload);
-                if (!parsed.success) throw new Error('Unexpected response from weather service');
-
-                setWeather(parsed.data);
-                setLastFetchedAt(Date.now());
-                void fetchCountry(parsed.data.sys.country);
-                if (!silent) Toast.show({ type: 'success', text1: `Weather updated for ${parsed.data.name}` });
-            } catch (error) {
-                console.error('Weather lookup failed', error);
-                setWeather(null);
-                setCountry(null);
-                Toast.show({ type: 'error', text1: 'Unable to fetch weather', text2: error instanceof Error ? error.message : 'Check your connection and try again.' });
-            } finally {
-                setIsFetching(false);
-                Keyboard.dismiss();
-            }
-        },
-        [city, fetchCountry],
-    );
-
-    const kelvinToCelsius = (value: number) => (value - 273.15).toFixed(1);
-    const speedToKmh = (value: number) => (value * 3.6).toFixed(1);
-
-    const weatherDescription = weather?.weather?.[0]?.description ?? '';
-    const weatherMetrics = weather
-        ? [
-            { label: 'Feels Like', icon: 'thermometer', value: `${kelvinToCelsius(weather.main.feels_like)}°C` },
-            { label: 'Min Temp', icon: 'chevron-down', value: `${kelvinToCelsius(weather.main.temp_min)}°C` },
-            { label: 'Max Temp', icon: 'chevron-up', value: `${kelvinToCelsius(weather.main.temp_max)}°C` },
-            { label: 'Humidity', icon: 'water-percent', value: `${weather.main.humidity}%` },
-            { label: 'Wind', icon: 'weather-windy', value: `${speedToKmh(weather.wind.speed)} km/h` },
-            { label: 'Pressure', icon: 'gauge', value: `${weather.main.pressure} hPa` },
-        ]
-        : [];
+            const r = await fetch(`${WEATHER_API_URL}?q=${encodeURIComponent(query)}&appid=${WEATHER_API_KEY}`);
+            if (!r.ok) throw new Error('City not found');
+            const parsed = WeatherSchema.parse(await r.json());
+            setWeather(parsed); setLastFetchedAt(Date.now());
+        } catch (e) {
+            setWeather(null);
+            Toast.show({ type: 'error', text1: 'Unable to fetch weather', text2: e instanceof Error ? e.message : 'Try again.' });
+        } finally { setIsFetching(false); Keyboard.dismiss(); }
+    }, [city]);
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: insets.top + 24 }]}>
+        <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: insets.top + 12 }]}>
+            {/* Greeting & time */}
             <View style={styles.headerRow}>
-                <View>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.greeting}>{getGreeting()}</Text>
                     <Text style={styles.date}>{dateLabel}</Text>
-                    <Text style={styles.time}>{timeLabel}</Text>
                 </View>
-                <MaterialCommunityIcons name="clock-outline" size={44} color={colors.tint} />
+                <Text style={styles.time}>{timeLabel}</Text>
             </View>
 
+            {/* Weather */}
             <View style={styles.weatherCard}>
-                <LinearGradient colors={[...colors.weatherGradient]} style={styles.weatherGradient}>
-                    <View style={styles.weatherHeader}>
-                        <Text style={styles.weatherTitle}>Today&apos;s Weather</Text>
-                        <MaterialCommunityIcons name="weather-partly-cloudy" size={32} color="#f59e0b" />
-                    </View>
-                    <Text style={styles.weatherSubtitle}>Stay ahead with live climate updates powered by OpenWeather.</Text>
+                {/* Search */}
+                <View style={styles.searchRow}>
+                    <MaterialCommunityIcons name="magnify" size={18} color={colors.placeholder} />
+                    <TextInput
+                        placeholder="Search city weather"
+                        placeholderTextColor={colors.placeholder}
+                        style={styles.searchInput}
+                        value={city}
+                        onChangeText={setCity}
+                        returnKeyType="search"
+                        onSubmitEditing={() => handleSearch()}
+                        autoCapitalize="words"
+                    />
+                    <Pressable style={[styles.searchButton, isFetching && { opacity: 0.5 }]} onPress={() => handleSearch()} disabled={isFetching}>
+                        <Text style={styles.searchButtonText}>{isFetching ? '...' : 'Go'}</Text>
+                    </Pressable>
+                </View>
 
-                    <View style={styles.searchRow}>
-                        <MaterialCommunityIcons name="map-marker" size={22} color={colors.weatherTextSecondary} />
-                        <TextInput
-                            placeholder="Search city"
-                            placeholderTextColor={colors.placeholder}
-                            style={styles.searchInput}
-                            value={city}
-                            onChangeText={setCity}
-                            returnKeyType="search"
-                            onSubmitEditing={() => handleSearch()}
-                            autoCapitalize="words"
-                        />
-                        <Pressable style={[styles.searchButton, isFetching && styles.searchButtonDisabled]} onPress={() => handleSearch()} disabled={isFetching}>
-                            <MaterialCommunityIcons name="magnify" size={20} color="#fff" />
-                        </Pressable>
-                    </View>
-
-                    {weather ? (
-                        <View style={styles.weatherBody}>
-                            <View style={styles.weatherSummary}>
-                                <View>
-                                    <Text style={styles.weatherLocation}>{weather.name}{country?.name?.common ? `, ${country.name.common}` : ''}</Text>
-                                    <Text style={styles.weatherDescription}>{capitalizeWords(weatherDescription)}</Text>
-                                </View>
-                                <Text style={styles.weatherTemp}>{kelvinToCelsius(weather.main.temp)}°C</Text>
+                {weather ? (
+                    <>
+                        {/* Main temp display */}
+                        <View style={styles.tempSection}>
+                            <View style={styles.tempLeft}>
+                                <Text style={styles.tempValue}>{k2c(weather.main.temp)}°</Text>
+                                <Text style={styles.tempUnit}>C</Text>
                             </View>
-                            <View style={styles.metricGrid}>
-                                {weatherMetrics.map((metric) => (
-                                    <View key={metric.label} style={styles.metricCard}>
-                                        <MaterialCommunityIcons name={metric.icon as any} size={22} color={colors.tint} />
-                                        <Text style={styles.metricLabel}>{metric.label}</Text>
-                                        <Text style={styles.metricValue}>{metric.value}</Text>
-                                    </View>
-                                ))}
+                            <View style={styles.tempRight}>
+                                <Text style={styles.locationText}>{weather.name}</Text>
+                                <Text style={styles.descriptionText}>{capitalize(weather.weather[0].description)}</Text>
+                                <Text style={styles.feelsLike}>Feels like {k2c(weather.main.feels_like)}°C</Text>
                             </View>
                         </View>
-                    ) : (
-                        <View style={styles.noWeatherState}>
-                            <MaterialCommunityIcons name="cloud-alert" size={48} color={colors.danger} />
-                            <Text style={styles.noWeatherText}>Search for a city to view the latest forecast.</Text>
+
+                        {/* Metric chips — 2 rows of 3 */}
+                        <View style={styles.metricGrid}>
+                            <View style={styles.metricItem}>
+                                <MaterialCommunityIcons name="thermometer-low" size={16} color={colors.tint} />
+                                <Text style={styles.metricValue}>{k2c(weather.main.temp_min)}°</Text>
+                                <Text style={styles.metricLabel}>Min</Text>
+                            </View>
+                            <View style={styles.metricItem}>
+                                <MaterialCommunityIcons name="thermometer-high" size={16} color={colors.danger} />
+                                <Text style={styles.metricValue}>{k2c(weather.main.temp_max)}°</Text>
+                                <Text style={styles.metricLabel}>Max</Text>
+                            </View>
+                            <View style={styles.metricItem}>
+                                <MaterialCommunityIcons name="water-percent" size={16} color="#0ea5e9" />
+                                <Text style={styles.metricValue}>{weather.main.humidity}%</Text>
+                                <Text style={styles.metricLabel}>Humidity</Text>
+                            </View>
+                            <View style={styles.metricItem}>
+                                <MaterialCommunityIcons name="weather-windy" size={16} color="#64748b" />
+                                <Text style={styles.metricValue}>{(weather.wind.speed * 3.6).toFixed(0)}</Text>
+                                <Text style={styles.metricLabel}>km/h</Text>
+                            </View>
+                            <View style={styles.metricItem}>
+                                <MaterialCommunityIcons name="gauge" size={16} color="#8b5cf6" />
+                                <Text style={styles.metricValue}>{weather.main.pressure}</Text>
+                                <Text style={styles.metricLabel}>hPa</Text>
+                            </View>
+                            <View style={styles.metricItem}>
+                                <MaterialCommunityIcons name="arrow-up-down" size={16} color="#f59e0b" />
+                                <Text style={styles.metricValue}>{k2c(weather.main.temp_max) - k2c(weather.main.temp_min)}°</Text>
+                                <Text style={styles.metricLabel}>Range</Text>
+                            </View>
                         </View>
-                    )}
-                </LinearGradient>
+                    </>
+                ) : (
+                    <View style={styles.noWeather}>
+                        <MaterialCommunityIcons name="weather-partly-cloudy" size={36} color={colors.textTertiary} />
+                        <Text style={styles.noWeatherText}>Search a city to see live weather.</Text>
+                    </View>
+                )}
             </View>
 
-            <View style={styles.toolHeadingRow}>
-                <Text style={styles.toolHeading}>Quick Access</Text>
-                <Text style={styles.toolCaption}>Your tools and features at a glance.</Text>
-            </View>
-
+            {/* Quick Access */}
+            <Text style={styles.sectionTitle}>Quick Access</Text>
             <View style={styles.toolGrid}>
                 {TOOL_CARDS.map((tool) => (
-                    <Pressable
-                        key={tool.key}
-                        style={({ pressed }) => [styles.toolCard, pressed && styles.toolCardPressed]}
-                        onPress={() => router.push(tool.route as never)}
-                    >
-                        <LinearGradient colors={tool.accent} style={styles.toolIconBadge}>
-                            <MaterialCommunityIcons name={tool.icon as any} size={28} color="#ffffff" />
-                        </LinearGradient>
-                        <View style={styles.toolContent}>
-                            <Text style={styles.toolTitle}>{tool.title}</Text>
-                            <Text style={styles.toolDescription}>{tool.description}</Text>
+                    <Pressable key={tool.key} style={({ pressed }) => [styles.toolCard, pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }]} onPress={() => router.push(tool.route as never)}>
+                        <View style={[styles.toolIcon, { backgroundColor: `${tool.color}15` }]}>
+                            <MaterialCommunityIcons name={tool.icon as any} size={24} color={tool.color} />
                         </View>
-                        <MaterialCommunityIcons name="chevron-right" size={24} color={colors.chevron} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.toolTitle}>{tool.title}</Text>
+                            <Text style={styles.toolDesc}>{tool.description}</Text>
+                        </View>
+                        <MaterialCommunityIcons name="chevron-right" size={20} color={colors.chevron} />
                     </Pressable>
                 ))}
             </View>
@@ -264,50 +181,59 @@ export default function HomeScreen() {
     );
 }
 
-function capitalizeWords(value: string) {
-    return value.split(' ').map((word) => (word ? word[0].toUpperCase() + word.slice(1) : '')).join(' ');
+function getGreeting() {
+    const h = new Date().getHours();
+    if (h < 6) return '🌙 Good Night';
+    if (h < 12) return '☀️ Good Morning';
+    if (h < 17) return '🌤️ Good Afternoon';
+    if (h < 21) return '🌆 Good Evening';
+    return '🌙 Good Night';
 }
 
-const createStyles = (c: ThemeColors) =>
-    StyleSheet.create({
-        container: { flex: 1, backgroundColor: c.background },
-        content: { padding: 20, gap: 20, paddingBottom: 48 },
-        headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-        date: { fontSize: 18, color: c.textSecondary, fontWeight: '500' },
-        time: { fontSize: 42, fontWeight: '700', color: c.text },
-        weatherCard: { borderRadius: 32, overflow: 'hidden' },
-        weatherGradient: { padding: 24, gap: 18 },
-        weatherHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-        weatherTitle: { fontSize: 20, fontWeight: '600', color: c.weatherText },
-        weatherSubtitle: { fontSize: 14, color: c.weatherTextSecondary },
-        searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.weatherMetricBg, borderRadius: 18, paddingHorizontal: 16, gap: 12 },
-        searchInput: { flex: 1, color: c.weatherText, paddingVertical: Platform.select({ ios: 14, default: 10 }) },
-        searchButton: { backgroundColor: c.accent, padding: 10, borderRadius: 12 },
-        searchButtonDisabled: { opacity: 0.6 },
-        weatherBody: { gap: 20 },
-        weatherSummary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-        weatherLocation: { fontSize: 22, fontWeight: '700', color: c.weatherText },
-        weatherDescription: { fontSize: 15, color: c.weatherTextSecondary, marginTop: 4 },
-        weatherTemp: { fontSize: 48, fontWeight: '800', color: c.weatherText },
-        metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-        metricCard: { width: '30%', minWidth: 110, padding: 12, borderRadius: 16, backgroundColor: c.weatherMetricBg, gap: 6 },
-        metricLabel: { fontSize: 13, color: c.weatherTextSecondary },
-        metricValue: { fontSize: 14, fontWeight: '600', color: c.weatherText },
-        noWeatherState: { alignItems: 'center', gap: 12, paddingVertical: 16 },
-        noWeatherText: { color: c.weatherTextSecondary, textAlign: 'center' },
-        toolHeadingRow: { gap: 8 },
-        toolHeading: { fontSize: 22, fontWeight: '700', color: c.text },
-        toolCaption: { fontSize: 14, color: c.textSecondary },
-        toolGrid: { gap: 16 },
-        toolCard: {
-            flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid,
-            borderRadius: 20, padding: 18, gap: 16,
-            shadowColor: c.cardShadow, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
-            borderWidth: 1, borderColor: c.border,
-        },
-        toolCardPressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
-        toolIconBadge: { padding: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-        toolContent: { flex: 1, gap: 4 },
-        toolTitle: { fontSize: 18, fontWeight: '600', color: c.text },
-        toolDescription: { fontSize: 14, color: c.textSecondary },
-    });
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    content: { padding: 20, gap: 20, paddingBottom: 48 },
+
+    // Header
+    headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    greeting: { fontSize: 22, fontWeight: '700', color: c.text },
+    date: { fontSize: 14, color: c.textSecondary, marginTop: 2 },
+    time: { fontSize: 36, fontWeight: '800', color: c.text },
+
+    // Weather card
+    weatherCard: { backgroundColor: c.surfaceSolid, borderRadius: 24, padding: 18, gap: 16, borderWidth: 1, borderColor: c.border },
+    searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.inputBg, borderRadius: 14, paddingHorizontal: 14, gap: 8, borderWidth: 1, borderColor: c.inputBorder },
+    searchInput: { flex: 1, fontSize: 15, color: c.text, paddingVertical: 10 },
+    searchButton: { backgroundColor: c.accent, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10 },
+    searchButtonText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+    // Temperature
+    tempSection: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+    tempLeft: { flexDirection: 'row', alignItems: 'flex-start' },
+    tempValue: { fontSize: 56, fontWeight: '800', color: c.text, lineHeight: 60 },
+    tempUnit: { fontSize: 20, fontWeight: '600', color: c.textSecondary, marginTop: 8 },
+    tempRight: { flex: 1, gap: 2 },
+    locationText: { fontSize: 18, fontWeight: '700', color: c.text },
+    descriptionText: { fontSize: 14, color: c.textSecondary },
+    feelsLike: { fontSize: 12, color: c.textTertiary, marginTop: 2 },
+
+    // Metrics — 3x2 grid
+    metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    metricItem: { width: '31%', flexGrow: 1, flexBasis: '30%', alignItems: 'center', gap: 3, paddingVertical: 10, backgroundColor: c.chipBg, borderRadius: 14 },
+    metricValue: { fontSize: 16, fontWeight: '700', color: c.text },
+    metricLabel: { fontSize: 11, color: c.textTertiary },
+
+    // No weather
+    noWeather: { alignItems: 'center', gap: 8, paddingVertical: 20 },
+    noWeatherText: { fontSize: 14, color: c.textTertiary },
+
+    // Section
+    sectionTitle: { fontSize: 20, fontWeight: '700', color: c.text },
+
+    // Tools
+    toolGrid: { gap: 12 },
+    toolCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, borderRadius: 18, padding: 16, gap: 14, borderWidth: 1, borderColor: c.border },
+    toolIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    toolTitle: { fontSize: 16, fontWeight: '700', color: c.text },
+    toolDesc: { fontSize: 13, color: c.textSecondary, marginTop: 1 },
+});
