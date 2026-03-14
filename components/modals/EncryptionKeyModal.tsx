@@ -79,6 +79,7 @@ export default function EncryptionKeyModal({
                         placeholderTextColor="rgba(15, 23, 42, 0.3)"
                         autoFocus={!biometricAvailable}
                         secureTextEntry
+                        autoCapitalize="none"
                         style={styles.input}
                     />
                     <View style={styles.buttonRow}>

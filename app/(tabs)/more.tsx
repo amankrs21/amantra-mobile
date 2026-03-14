@@ -1,13 +1,16 @@
 import { useCallback, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
+import EncryptionKeyModal from '@/components/modals/EncryptionKeyModal';
 import { useAuth } from '@/hooks/use-auth';
 import { useBiometric } from '@/hooks/use-biometric';
 import { useLoading } from '@/hooks/use-loading';
 import { useEncryptionKey } from '@/hooks/use-encryption-key';
 import api from '@/services/api';
+import { encodeKey } from '@/utils/crypto';
 
 const APP_VERSION = '1.0.0';
 
@@ -22,10 +25,12 @@ type SectionItem = {
 };
 
 export default function MoreScreen() {
-    const { user, signOut, setEncryptionKeyConfigured } = useAuth();
+    const { user, signOut, encryptionKeyConfigured, setEncryptionKeyConfigured } = useAuth();
     const { showLoading, hideLoading } = useLoading();
-    const { clearKey } = useEncryptionKey();
+    const { clearKey, setKey } = useEncryptionKey();
     const { isAvailable: bioAvailable, isEnabled: bioEnabled, enableBiometric, disableBiometric } = useBiometric();
+    const insets = useSafeAreaInsets();
+    const [showEncryptionModal, setShowEncryptionModal] = useState(false);
 
     const handleToggleBiometric = useCallback(async () => {
         if (bioEnabled) {
@@ -73,6 +78,35 @@ export default function MoreScreen() {
         Toast.show({ type: 'success', text1: 'Local encryption key cleared.', text2: 'You\'ll be prompted to re-enter it next time.' });
     }, [clearKey]);
 
+    const handleSetupEncryptionKey = useCallback(
+        async (value: string) => {
+            const candidate = value.trim();
+            if (!candidate) return;
+
+            try {
+                showLoading('Validating key...');
+                await api.post('/pin/verify', { key: encodeKey(candidate) });
+                await setKey(candidate);
+                await setEncryptionKeyConfigured(true);
+                Toast.show({ type: 'success', text1: 'Encryption key configured.' });
+                setShowEncryptionModal(false);
+
+                if (bioAvailable && !bioEnabled) {
+                    const enrolled = await enableBiometric(candidate);
+                    if (enrolled) {
+                        Toast.show({ type: 'success', text1: 'Biometric unlock enabled!' });
+                    }
+                }
+            } catch (error) {
+                console.error('Key setup failed', error);
+                Toast.show({ type: 'error', text1: 'Invalid encryption key.' });
+            } finally {
+                hideLoading();
+            }
+        },
+        [bioAvailable, bioEnabled, enableBiometric, hideLoading, setEncryptionKeyConfigured, setKey, showLoading],
+    );
+
     const handleSignOut = useCallback(async () => {
         showLoading('Signing out...');
         try {
@@ -101,6 +135,14 @@ export default function MoreScreen() {
     ];
 
     const securityItems: SectionItem[] = [
+        ...(!encryptionKeyConfigured ? [{
+            key: 'setup-key',
+            icon: 'key-plus',
+            label: 'Set Encryption Key',
+            subtitle: 'Configure your encryption PIN for vault access',
+            accent: '#2563eb',
+            onPress: () => setShowEncryptionModal(true),
+        }] : []),
         ...(bioAvailable ? [{
             key: 'biometric',
             icon: 'fingerprint',
@@ -194,7 +236,7 @@ export default function MoreScreen() {
     );
 
     return (
-        <View style={styles.screen}>
+        <View style={[styles.screen, { paddingTop: insets.top }]}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <View style={{ flex: 1, gap: 6 }}>
@@ -216,6 +258,13 @@ export default function MoreScreen() {
                     <Text style={styles.signOutLabel}>Sign out</Text>
                 </Pressable>
             </ScrollView>
+
+            <EncryptionKeyModal
+                visible={showEncryptionModal}
+                onClose={() => setShowEncryptionModal(false)}
+                onConfirm={handleSetupEncryptionKey}
+                caption={encryptionKeyConfigured ? 'Re-enter your encryption PIN.' : 'Set your encryption PIN to secure your vault and notes.'}
+            />
         </View>
     );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import AccountDeleteModal from '@/components/account/AccountDeleteModal';
@@ -60,6 +61,7 @@ const defaultPasswords: PasswordFormState = {
 export default function AccountScreen() {
     const { user, refreshUser, signOut } = useAuth();
     const { showLoading, hideLoading } = useLoading();
+    const insets = useSafeAreaInsets();
 
     const userEmail = user?.email ?? '';
     const userId = user?.id ?? null;
@@ -231,7 +233,7 @@ export default function AccountScreen() {
     }, [hideLoading, showLoading, signOut]);
 
     return (
-        <View style={styles.screen}>
+        <View style={[styles.screen, { paddingTop: insets.top }]}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <View style={{ flex: 1, gap: 6 }}>

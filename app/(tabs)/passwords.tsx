@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { z } from 'zod';
@@ -42,6 +43,7 @@ export default function PasswordsScreen() {
     const { encodedKey, setKey, clearKey, isHydrated: isKeyHydrated } = useEncryptionKey();
     const { showLoading, hideLoading } = useLoading();
     const { isAvailable: bioAvailable, isEnabled: bioEnabled, authenticateAndGetKey, enableBiometric } = useBiometric();
+    const insets = useSafeAreaInsets();
 
     const [entries, setEntries] = useState<VaultEntry[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -372,7 +374,7 @@ export default function PasswordsScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Password Vault</Text>
@@ -407,6 +409,9 @@ export default function PasswordsScreen() {
                 contentContainerStyle={filteredEntries.length === 0 ? styles.emptyList : { gap: 16, paddingBottom: 120 }}
                 renderItem={renderItem}
                 ListEmptyComponent={listEmptyComponent}
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={10}
+                windowSize={5}
             />
 
             <Pressable style={styles.fab} onPress={() => setAddVisible(true)}>

@@ -11,6 +11,7 @@ import {
     TextInput,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { z } from 'zod';
@@ -75,6 +76,7 @@ const WEATHER_TTL_MS = 1000 * 60 * 30; // cache for 30 minutes
 
 export default function HomeScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [now, setNow] = useState(() => new Date());
     const [city, setCity] = useState('New York');
     const [weather, setWeather] = useState<WeatherPayload | null>(null);
@@ -83,7 +85,7 @@ export default function HomeScreen() {
     const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
 
     useEffect(() => {
-        const timer = setInterval(() => setNow(new Date()), 1000);
+        const timer = setInterval(() => setNow(new Date()), 10000);
         return () => clearInterval(timer);
     }, []);
 
@@ -94,7 +96,7 @@ export default function HomeScreen() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const timeLabel = useMemo(() => now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), [now]);
+    const timeLabel = useMemo(() => now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), [now]);
     const dateLabel = useMemo(() => now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }), [now]);
 
     const fetchCountry = useCallback(async (countryCode?: string) => {
@@ -205,7 +207,7 @@ export default function HomeScreen() {
         : [];
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: insets.top + 24 }]}>
             <View style={styles.headerRow}>
                 <View>
                     <Text style={styles.date}>{dateLabel}</Text>
@@ -314,7 +316,7 @@ function capitalizeWords(value: string) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#020617',
+        backgroundColor: '#e2e8f0',
     },
     content: {
         padding: 24,
@@ -328,13 +330,13 @@ const styles = StyleSheet.create({
     },
     date: {
         fontSize: 18,
-        color: 'rgba(226, 232, 240, 0.8)',
+        color: 'rgba(15, 23, 42, 0.6)',
         fontWeight: '500',
     },
     time: {
-        fontSize: 36,
+        fontSize: 42,
         fontWeight: '700',
-        color: '#f8fafc',
+        color: '#0f172a',
     },
     weatherCard: {
         borderRadius: 32,
@@ -439,11 +441,11 @@ const styles = StyleSheet.create({
     toolHeading: {
         fontSize: 22,
         fontWeight: '700',
-        color: '#f8fafc',
+        color: '#0f172a',
     },
     toolCaption: {
         fontSize: 14,
-        color: 'rgba(226, 232, 240, 0.65)',
+        color: 'rgba(15, 23, 42, 0.65)',
     },
     toolGrid: {
         gap: 16,

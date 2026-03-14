@@ -51,6 +51,7 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
     const [showGenerator, setShowGenerator] = useState(false);
     const [generatorOptions, setGeneratorOptions] = useState<PasswordOptions>(DEFAULT_PASSWORD_OPTIONS);
     const [generatedPassword, setGeneratedPassword] = useState('');
+    const [showPasswordField, setShowPasswordField] = useState(false);
 
     useEffect(() => {
         if (visible) {
@@ -62,6 +63,7 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
             setShowGenerator(false);
             setGeneratedPassword('');
             setGeneratorOptions(DEFAULT_PASSWORD_OPTIONS);
+            setShowPasswordField(false);
         }
     }, [initialValues, visible]);
 
@@ -141,6 +143,7 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
                                 placeholder="e.g. Github"
                                 placeholderTextColor="rgba(15, 23, 42, 0.35)"
                                 value={formValues.title}
+                                autoCapitalize="words"
                                 onChangeText={(value) => handleChange('title', value)}
                             />
                         </View>
@@ -172,14 +175,24 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
                                     </Text>
                                 </Pressable>
                             </View>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter password"
-                                placeholderTextColor="rgba(15, 23, 42, 0.35)"
-                                value={formValues.password}
-                                secureTextEntry
-                                onChangeText={(value) => handleChange('password', value)}
-                            />
+                            <View style={styles.passwordRow}>
+                                <TextInput
+                                    style={[styles.input, styles.passwordInput]}
+                                    placeholder="Enter password"
+                                    placeholderTextColor="rgba(15, 23, 42, 0.35)"
+                                    value={formValues.password}
+                                    secureTextEntry={!showPasswordField}
+                                    autoCapitalize="none"
+                                    onChangeText={(value) => handleChange('password', value)}
+                                />
+                                <Pressable style={styles.eyeButton} onPress={() => setShowPasswordField((prev) => !prev)}>
+                                    <MaterialCommunityIcons
+                                        name={showPasswordField ? 'eye-off-outline' : 'eye-outline'}
+                                        size={20}
+                                        color="rgba(15, 23, 42, 0.6)"
+                                    />
+                                </Pressable>
+                            </View>
                         </View>
 
                         {categories && onCategoryChange ? (
@@ -333,6 +346,26 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         fontSize: 16,
         color: '#0f172a',
+    },
+    passwordRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(15, 23, 42, 0.12)',
+        backgroundColor: '#fff',
+    },
+    passwordInput: {
+        flex: 1,
+        borderWidth: 0,
+        borderRadius: 0,
+        paddingVertical: 12,
+    },
+    eyeButton: {
+        height: '100%',
+        paddingHorizontal: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     buttonRow: {
         flexDirection: 'row',

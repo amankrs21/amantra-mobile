@@ -6,8 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 
-const BIOMETRIC_ENABLED_KEY = 'securevault:biometric-enabled';
-const SECURE_STORE_KEY = 'securevault:biometric-ekey';
+const BIOMETRIC_ENABLED_KEY = 'securevault.biometric-enabled';
+const SECURE_STORE_KEY = 'securevault.biometric-ekey';
 
 export type BiometricState = {
     /** Whether the device supports biometrics */

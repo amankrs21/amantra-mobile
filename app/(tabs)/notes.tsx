@@ -11,6 +11,7 @@ import {
     View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
@@ -54,6 +55,7 @@ export default function NotesScreen() {
     const { encodedKey, setKey, isHydrated: isKeyHydrated } = useEncryptionKey();
     const { showLoading, hideLoading } = useLoading();
     const { isAvailable: bioAvailable, isEnabled: bioEnabled, authenticateAndGetKey, enableBiometric } = useBiometric();
+    const insets = useSafeAreaInsets();
 
     const [notes, setNotes] = useState<Note[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -337,7 +339,7 @@ export default function NotesScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Secure Notes</Text>
@@ -371,6 +373,9 @@ export default function NotesScreen() {
                 keyExtractor={(item) => item._id}
                 contentContainerStyle={filteredNotes.length === 0 ? styles.emptyList : { gap: 16, paddingBottom: 120 }}
                 renderItem={renderItem}
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={10}
+                windowSize={5}
                 ListEmptyComponent={() => (
                     <View style={styles.emptyState}>
                         <MaterialCommunityIcons name="notebook-outline" size={48} color="rgba(148, 163, 184, 0.8)" />
@@ -431,13 +436,13 @@ export default function NotesScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0f172a',
+        backgroundColor: '#e2e8f0',
         padding: 24,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: '#020617',
         padding: 20,
         borderRadius: 20,
         marginBottom: 20,
@@ -455,7 +460,7 @@ const styles = StyleSheet.create({
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(15, 23, 42, 0.7)',
+        backgroundColor: '#fff',
         borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 12,
@@ -465,7 +470,7 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         fontSize: 16,
-        color: '#e2e8f0',
+        color: '#0f172a',
     },
     clearButton: {
         width: 26,
@@ -473,13 +478,17 @@ const styles = StyleSheet.create({
         borderRadius: 13,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(226, 232, 240, 0.1)',
+        backgroundColor: 'rgba(15, 23, 42, 0.06)',
     },
     noteCard: {
-        backgroundColor: '#e2e8f0',
+        backgroundColor: '#fff',
         borderRadius: 20,
         padding: 18,
         gap: 12,
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 2,
     },
     noteHeader: {
         flexDirection: 'row',
@@ -535,11 +544,11 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#e2e8f0',
+        color: '#0f172a',
     },
     emptySubtitle: {
         fontSize: 14,
-        color: 'rgba(226, 232, 240, 0.6)',
+        color: 'rgba(15, 23, 42, 0.65)',
         textAlign: 'center',
         paddingHorizontal: 32,
     },

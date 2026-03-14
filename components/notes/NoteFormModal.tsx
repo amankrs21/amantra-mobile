@@ -83,6 +83,7 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
                                 placeholder="Daily reflections"
                                 placeholderTextColor="rgba(15, 23, 42, 0.35)"
                                 value={formValues.title}
+                                autoCapitalize="words"
                                 onChangeText={(text) => setFormValues((prev) => ({ ...prev, title: text }))}
                             />
                         </View>
@@ -94,6 +95,7 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
                                 placeholderTextColor="rgba(15, 23, 42, 0.35)"
                                 value={formValues.content}
                                 multiline
+                                autoCapitalize="sentences"
                                 onChangeText={(text) => setFormValues((prev) => ({ ...prev, content: text }))}
                             />
                         </View>
