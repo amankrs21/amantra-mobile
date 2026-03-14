@@ -60,7 +60,7 @@ export default function WatchlistFormModal({ visible, onClose, onSubmit, mode = 
         if (visible) {
             setTitle(initialValues?.title ?? '');
             setCategory(initialValues?.category ?? 'movie');
-            setYear(initialValues?.year ?? '');
+            setYear(String(initialValues?.year ?? ''));
             setRating(initialValues?.rating ?? 0);
             setNotes(initialValues?.notes ?? '');
             setSubscribeNews(initialValues?.subscribeNews ?? false);
@@ -134,8 +134,8 @@ export default function WatchlistFormModal({ visible, onClose, onSubmit, mode = 
                         </View>
 
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>Year</Text>
-                            <TextInput value={year} onChangeText={setYear} placeholder="2026" placeholderTextColor={colors.placeholder} style={styles.input} keyboardType="number-pad" maxLength={4} />
+                            <Text style={styles.label}>Release Year</Text>
+                            <TextInput value={year} onChangeText={setYear} placeholder="e.g. 2024 — helps identify the right movie" placeholderTextColor={colors.placeholder} style={styles.input} keyboardType="number-pad" maxLength={4} />
                         </View>
 
                         {/* Parts / Sub-items */}

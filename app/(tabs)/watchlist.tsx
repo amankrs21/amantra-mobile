@@ -166,6 +166,7 @@ export default function WatchlistScreen() {
                     </Pressable>
                     <Pressable style={{ flex: 1, gap: 2 }} onPress={() => hasParts ? setExpandedId(isExpanded ? null : item._id) : undefined}>
                         <Text style={[styles.cardTitle, isWatched && styles.cardTitleWatched]}>{item.title}</Text>
+                        {item.notes ? <Text style={styles.notesText} numberOfLines={2}>{item.notes}</Text> : null}
                         <View style={styles.metaRow}>
                             {catDef ? (
                                 <View style={[styles.catBadge, { backgroundColor: `${catDef.color}18` }]}>
@@ -186,7 +187,6 @@ export default function WatchlistScreen() {
                                 </View>
                             ) : null}
                         </View>
-                        {item.notes ? <Text style={styles.notesText} numberOfLines={1}>{item.notes}</Text> : null}
                     </Pressable>
                     <View style={styles.cardActions}>
                         <Pressable onPress={() => handleToggleNews(item)}>
