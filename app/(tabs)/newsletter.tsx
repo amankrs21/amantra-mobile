@@ -27,6 +27,7 @@ type Article = {
     tag?: string;
     publishedAt?: string;
     relevance?: string;
+    watchlistTitle?: string;
 };
 
 const TABS = [
@@ -119,11 +120,17 @@ export default function NewsletterScreen() {
     const renderArticle = useCallback(({ item }: { item: Article }) => (
         <Pressable style={styles.card} onPress={() => handleOpen(item.url)}>
             <View style={styles.cardContent}>
+                {item.watchlistTitle ? (
+                    <View style={styles.watchlistBadge}>
+                        <MaterialCommunityIcons name="movie-open" size={11} color={colors.accent} />
+                        <Text style={styles.watchlistBadgeText}>{item.watchlistTitle}</Text>
+                    </View>
+                ) : null}
                 <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
                 {item.description ? <Text style={styles.cardDesc} numberOfLines={3}>{item.description}</Text> : null}
                 <View style={styles.cardMeta}>
                     {item.source ? <Text style={styles.sourceText}>{item.source}</Text> : null}
-                    {item.tag ? (
+                    {item.tag && item.tag !== 'watchlist' ? (
                         <View style={styles.tagBadge}>
                             <Text style={styles.tagText}>{item.tag}</Text>
                         </View>
@@ -204,6 +211,8 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     tagText: { fontSize: 10, fontWeight: '700', color: c.textSecondary, textTransform: 'uppercase' },
     hotBadge: { flexDirection: 'row', alignItems: 'center', gap: 2 },
     hotText: { fontSize: 10, fontWeight: '700', color: '#ef4444' },
+    watchlistBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${c.accent}15`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 4 },
+    watchlistBadgeText: { fontSize: 11, fontWeight: '700', color: c.accent },
     loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     loadingText: { fontSize: 14, color: c.textSecondary },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
