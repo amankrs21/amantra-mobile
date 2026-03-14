@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Modal,
     Pressable,
@@ -15,6 +15,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { ThemeColors } from '@/constants/theme';
 
+type PartItem = { name: string; watched: boolean };
+
 type WatchlistValues = {
     title: string;
     category: string;
@@ -23,6 +25,7 @@ type WatchlistValues = {
     rating?: number;
     notes?: string;
     subscribeNews?: boolean;
+    parts?: PartItem[] | null;
 };
 
 type Props = {
@@ -43,13 +46,43 @@ export default function WatchlistFormModal({ visible, onClose, onSubmit, mode = 
     const colors = useThemeColors();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
-    const [title, setTitle] = useState(initialValues?.title ?? '');
-    const [category, setCategory] = useState(initialValues?.category ?? 'movie');
-    const [year, setYear] = useState(initialValues?.year ?? '');
-    const [rating, setRating] = useState(initialValues?.rating ?? 0);
-    const [notes, setNotes] = useState(initialValues?.notes ?? '');
-    const [subscribeNews, setSubscribeNews] = useState(initialValues?.subscribeNews ?? false);
+    const [title, setTitle] = useState('');
+    const [category, setCategory] = useState('movie');
+    const [year, setYear] = useState('');
+    const [rating, setRating] = useState(0);
+    const [notes, setNotes] = useState('');
+    const [subscribeNews, setSubscribeNews] = useState(false);
+    const [parts, setParts] = useState<PartItem[]>([]);
+    const [newPartName, setNewPartName] = useState('');
     const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (visible) {
+            setTitle(initialValues?.title ?? '');
+            setCategory(initialValues?.category ?? 'movie');
+            setYear(initialValues?.year ?? '');
+            setRating(initialValues?.rating ?? 0);
+            setNotes(initialValues?.notes ?? '');
+            setSubscribeNews(initialValues?.subscribeNews ?? false);
+            setParts(initialValues?.parts ?? []);
+            setNewPartName('');
+        }
+    }, [visible, initialValues]);
+
+    const handleAddPart = () => {
+        const name = newPartName.trim();
+        if (!name) return;
+        setParts((prev) => [...prev, { name, watched: false }]);
+        setNewPartName('');
+    };
+
+    const handleTogglePart = (index: number) => {
+        setParts((prev) => prev.map((p, i) => i === index ? { ...p, watched: !p.watched } : p));
+    };
+
+    const handleRemovePart = (index: number) => {
+        setParts((prev) => prev.filter((_, i) => i !== index));
+    };
 
     const handleSubmit = async () => {
         if (!title.trim()) return;
@@ -63,18 +96,24 @@ export default function WatchlistFormModal({ visible, onClose, onSubmit, mode = 
                 rating: rating || undefined,
                 notes: notes.trim() || undefined,
                 subscribeNews,
+                parts: parts.length > 0 ? parts : null,
             });
-            if (mode === 'create') { setTitle(''); setCategory('movie'); setYear(''); setRating(0); setNotes(''); setSubscribeNews(false); }
+            if (mode === 'create') {
+                setTitle(''); setCategory('movie'); setYear(''); setRating(0);
+                setNotes(''); setSubscribeNews(false); setParts([]); setNewPartName('');
+            }
             onClose();
         } finally { setSubmitting(false); }
     };
+
+    const watchedCount = parts.filter((p) => p.watched).length;
 
     return (
         <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
             <SafeAreaView style={styles.overlay}>
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
                 <View style={styles.sheet}>
-                    <ScrollView showsVerticalScrollIndicator={false}>
+                    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                         <View style={styles.handleBar} />
                         <Text style={styles.sheetTitle}>{mode === 'edit' ? 'Edit Item' : 'Add to Watchlist'}</Text>
 
@@ -97,6 +136,45 @@ export default function WatchlistFormModal({ visible, onClose, onSubmit, mode = 
                         <View style={styles.fieldGroup}>
                             <Text style={styles.label}>Year</Text>
                             <TextInput value={year} onChangeText={setYear} placeholder="2026" placeholderTextColor={colors.placeholder} style={styles.input} keyboardType="number-pad" maxLength={4} />
+                        </View>
+
+                        {/* Parts / Sub-items */}
+                        <View style={styles.fieldGroup}>
+                            <Text style={styles.label}>
+                                Parts {parts.length > 0 ? `(${watchedCount}/${parts.length} watched)` : '(optional)'}
+                            </Text>
+                            <Text style={styles.helperText}>For franchises with multiple entries (e.g. Harry Potter 1-8, Avengers series)</Text>
+
+                            {parts.map((part, index) => (
+                                <View key={index} style={styles.partRow}>
+                                    <Pressable onPress={() => handleTogglePart(index)}>
+                                        <MaterialCommunityIcons
+                                            name={part.watched ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+                                            size={22}
+                                            color={part.watched ? '#10b981' : colors.textTertiary}
+                                        />
+                                    </Pressable>
+                                    <Text style={[styles.partName, part.watched && styles.partNameWatched]}>{part.name}</Text>
+                                    <Pressable onPress={() => handleRemovePart(index)} style={styles.partRemove}>
+                                        <MaterialCommunityIcons name="close-circle-outline" size={18} color={colors.danger} />
+                                    </Pressable>
+                                </View>
+                            ))}
+
+                            <View style={styles.addPartRow}>
+                                <TextInput
+                                    value={newPartName}
+                                    onChangeText={setNewPartName}
+                                    placeholder="e.g. Part 1: The Philosopher's Stone"
+                                    placeholderTextColor={colors.placeholder}
+                                    style={[styles.input, styles.addPartInput]}
+                                    onSubmitEditing={handleAddPart}
+                                    returnKeyType="done"
+                                />
+                                <Pressable style={[styles.addPartButton, !newPartName.trim() && { opacity: 0.4 }]} onPress={handleAddPart} disabled={!newPartName.trim()}>
+                                    <MaterialCommunityIcons name="plus" size={20} color="#fff" />
+                                </Pressable>
+                            </View>
                         </View>
 
                         <View style={styles.fieldGroup}>
@@ -138,11 +216,12 @@ export default function WatchlistFormModal({ visible, onClose, onSubmit, mode = 
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    sheet: { backgroundColor: c.surfaceSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '85%', borderWidth: 1, borderColor: c.border },
+    sheet: { backgroundColor: c.surfaceSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%', borderWidth: 1, borderColor: c.border },
     handleBar: { width: 40, height: 4, borderRadius: 2, backgroundColor: c.textTertiary, alignSelf: 'center', marginBottom: 16 },
     sheetTitle: { fontSize: 22, fontWeight: '700', color: c.text, marginBottom: 20 },
     fieldGroup: { gap: 6, marginBottom: 16 },
     label: { fontSize: 14, fontWeight: '600', color: c.textSecondary },
+    helperText: { fontSize: 12, color: c.textTertiary, marginTop: -2 },
     input: { borderRadius: 14, borderWidth: 1, borderColor: c.inputBorder, paddingVertical: 12, paddingHorizontal: 16, fontSize: 16, color: c.text, backgroundColor: c.inputBg },
     textArea: { minHeight: 80, textAlignVertical: 'top' },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -151,6 +230,15 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     chipText: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
     chipTextActive: { color: '#ffffff' },
     starsRow: { flexDirection: 'row', gap: 2 },
+    // Parts
+    partRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, paddingHorizontal: 4 },
+    partName: { flex: 1, fontSize: 15, color: c.text },
+    partNameWatched: { textDecorationLine: 'line-through', color: c.textTertiary },
+    partRemove: { padding: 4 },
+    addPartRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+    addPartInput: { flex: 1, paddingVertical: 10, fontSize: 14 },
+    addPartButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' },
+    // Switch & buttons
     switchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 12 },
     switchLabel: { fontSize: 16, fontWeight: '600', color: c.text },
     switchSubtitle: { fontSize: 13, color: c.textSecondary },

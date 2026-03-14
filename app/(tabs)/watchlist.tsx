@@ -21,6 +21,8 @@ import type { ThemeColors } from '@/constants/theme';
 import { useLoading } from '@/hooks/use-loading';
 import api from '@/services/api';
 
+type PartItem = { name: string; watched: boolean };
+
 type WatchlistItem = {
     _id: string;
     title: string;
@@ -30,6 +32,7 @@ type WatchlistItem = {
     rating?: number;
     notes?: string;
     subscribeNews?: boolean;
+    parts?: PartItem[] | null;
     createdAt?: string;
     updatedAt?: string;
 };
@@ -54,6 +57,7 @@ export default function WatchlistScreen() {
     const [addVisible, setAddVisible] = useState(false);
     const [editItem, setEditItem] = useState<WatchlistItem | null>(null);
     const [deleteItem, setDeleteItem] = useState<WatchlistItem | null>(null);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     const filteredItems = useMemo(() => {
         let result = items;
@@ -130,20 +134,37 @@ export default function WatchlistScreen() {
         } catch { Toast.show({ type: 'error', text1: 'Failed.' }); }
     }, []);
 
+    const handleTogglePart = useCallback(async (item: WatchlistItem, partIndex: number) => {
+        if (!item.parts) return;
+        const updatedParts = item.parts.map((p, i) => i === partIndex ? { ...p, watched: !p.watched } : p);
+        try {
+            await api.put(`/watchlist/update/${item._id}`, { parts: updatedParts });
+            // Backend auto-computes status from parts
+            const watchedCount = updatedParts.filter((p) => p.watched).length;
+            const newStatus = watchedCount === 0 ? 'to_watch' : watchedCount === updatedParts.length ? 'watched' : 'watching';
+            setItems((prev) => prev.map((i) => i._id === item._id ? { ...i, parts: updatedParts, status: newStatus } : i));
+        } catch { Toast.show({ type: 'error', text1: 'Unable to update.' }); }
+    }, []);
+
     const renderItem = useCallback(({ item }: { item: WatchlistItem }) => {
         const isWatched = item.status === 'watched';
+        const isWatching = item.status === 'watching';
         const catDef = WATCHLIST_CATEGORIES.find((c) => c.key === item.category);
+        const hasParts = item.parts && item.parts.length > 0;
+        const isExpanded = expandedId === item._id;
+        const partsWatched = hasParts ? item.parts!.filter((p) => p.watched).length : 0;
+
         return (
             <View style={[styles.card, isWatched && styles.cardWatched]}>
                 <View style={styles.cardRow}>
-                    <Pressable style={styles.checkbox} onPress={() => handleToggleWatched(item)}>
+                    <Pressable style={styles.checkbox} onPress={() => hasParts ? setExpandedId(isExpanded ? null : item._id) : handleToggleWatched(item)}>
                         <MaterialCommunityIcons
-                            name={isWatched ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+                            name={isWatched ? 'checkbox-marked-circle' : isWatching ? 'progress-check' : hasParts ? (isExpanded ? 'chevron-down' : 'chevron-right') : 'checkbox-blank-circle-outline'}
                             size={24}
-                            color={isWatched ? '#10b981' : colors.textTertiary}
+                            color={isWatched ? '#10b981' : isWatching ? '#f59e0b' : colors.textTertiary}
                         />
                     </Pressable>
-                    <View style={{ flex: 1, gap: 2 }}>
+                    <Pressable style={{ flex: 1, gap: 2 }} onPress={() => hasParts ? setExpandedId(isExpanded ? null : item._id) : undefined}>
                         <Text style={[styles.cardTitle, isWatched && styles.cardTitleWatched]}>{item.title}</Text>
                         <View style={styles.metaRow}>
                             {catDef ? (
@@ -159,9 +180,14 @@ export default function WatchlistScreen() {
                                     <Text style={styles.ratingText}>{item.rating}/10</Text>
                                 </View>
                             ) : null}
+                            {hasParts ? (
+                                <View style={styles.progressBadge}>
+                                    <Text style={styles.progressText}>{partsWatched}/{item.parts!.length} parts</Text>
+                                </View>
+                            ) : null}
                         </View>
                         {item.notes ? <Text style={styles.notesText} numberOfLines={1}>{item.notes}</Text> : null}
-                    </View>
+                    </Pressable>
                     <View style={styles.cardActions}>
                         <Pressable onPress={() => handleToggleNews(item)}>
                             <MaterialCommunityIcons name={item.subscribeNews ? 'bell-ring' : 'bell-outline'} size={18} color={item.subscribeNews ? '#f59e0b' : colors.textTertiary} />
@@ -174,9 +200,24 @@ export default function WatchlistScreen() {
                         </Pressable>
                     </View>
                 </View>
+                {/* Expandable parts list */}
+                {hasParts && isExpanded ? (
+                    <View style={styles.partsContainer}>
+                        {item.parts!.map((part, idx) => (
+                            <Pressable key={idx} style={styles.partRow} onPress={() => handleTogglePart(item, idx)}>
+                                <MaterialCommunityIcons
+                                    name={part.watched ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+                                    size={20}
+                                    color={part.watched ? '#10b981' : colors.textTertiary}
+                                />
+                                <Text style={[styles.partName, part.watched && styles.partNameDone]}>{part.name}</Text>
+                            </Pressable>
+                        ))}
+                    </View>
+                ) : null}
             </View>
         );
-    }, [colors, handleToggleWatched, handleToggleNews, styles]);
+    }, [colors, expandedId, handleToggleWatched, handleToggleNews, handleTogglePart, styles]);
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -269,6 +310,12 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 2 },
     ratingText: { fontSize: 11, color: '#f59e0b', fontWeight: '600' },
     notesText: { fontSize: 12, color: c.textTertiary, marginTop: 2 },
+    progressBadge: { backgroundColor: 'rgba(245, 158, 11, 0.12)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
+    progressText: { fontSize: 10, fontWeight: '700', color: '#f59e0b' },
+    partsContainer: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: c.border, gap: 4, paddingLeft: 40 },
+    partRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+    partName: { fontSize: 14, color: c.text },
+    partNameDone: { textDecorationLine: 'line-through', color: c.textTertiary },
     cardActions: { gap: 10, alignItems: 'center' },
     loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
