@@ -6,6 +6,7 @@ import Toast from 'react-native-toast-message';
 
 import EncryptionKeyModal from '@/components/modals/EncryptionKeyModal';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { ThemeColors } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useBiometric } from '@/hooks/use-biometric';
@@ -25,6 +26,7 @@ export default function MoreScreen() {
     const { isAvailable: bioAvailable, isEnabled: bioEnabled, enableBiometric, disableBiometric } = useBiometric();
     const insets = useSafeAreaInsets();
     const colors = useThemeColors();
+    const { mode: themeMode, setMode: setThemeMode } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const [showEncryptionModal, setShowEncryptionModal] = useState(false);
 
@@ -69,8 +71,18 @@ export default function MoreScreen() {
         finally { hideLoading(); }
     }, [hideLoading, showLoading, signOut]);
 
+    const themeModeLabel = themeMode === 'system' ? 'System default' : themeMode === 'dark' ? 'Dark' : 'Light';
+    const themeModeIcon = themeMode === 'dark' ? 'weather-night' : themeMode === 'light' ? 'white-balance-sunny' : 'theme-light-dark';
+
+    const handleCycleTheme = useCallback(() => {
+        const next = themeMode === 'system' ? 'light' : themeMode === 'light' ? 'dark' : 'system';
+        setThemeMode(next);
+        const label = next === 'system' ? 'System default' : next === 'dark' ? 'Dark' : 'Light';
+        Toast.show({ type: 'info', text1: `Theme: ${label}` });
+    }, [themeMode, setThemeMode]);
+
     const settingsItems: SectionItem[] = [
-        { key: 'theme', icon: 'theme-light-dark', label: 'Theme', subtitle: 'Follows system theme', accent: '#8b5cf6' },
+        { key: 'theme', icon: themeModeIcon, label: 'Theme', subtitle: themeModeLabel, accent: '#8b5cf6', onPress: handleCycleTheme },
         { key: 'notifications', icon: 'bell-outline', label: 'Notifications', subtitle: 'Manage alerts (coming soon)', accent: '#f59e0b' },
     ];
 

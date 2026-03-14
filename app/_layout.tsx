@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Toast from 'react-native-toast-message';
@@ -8,36 +8,44 @@ import 'react-native-reanimated';
 import LoadingOverlay from '@/components/loading-overlay';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LoadingProvider } from '@/contexts/LoadingContext';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/theme';
 
 export const unstable_settings = {
   initialRouteName: '(auth)',
 };
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+function InnerLayout() {
+  const { scheme } = useTheme();
+  const isDark = scheme === 'dark';
 
   const navTheme = isDark
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: Colors.dark.background } }
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: Colors.light.background } };
 
   return (
+    <NavThemeProvider value={navTheme}>
+      <Stack>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </NavThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <LoadingProvider>
-          <ThemeProvider value={navTheme}>
-            <Stack>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            </Stack>
-            <StatusBar style={isDark ? 'light' : 'dark'} />
-          </ThemeProvider>
-          <LoadingOverlay />
-          <Toast />
-        </LoadingProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <LoadingProvider>
+            <InnerLayout />
+            <LoadingOverlay />
+            <Toast />
+          </LoadingProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
