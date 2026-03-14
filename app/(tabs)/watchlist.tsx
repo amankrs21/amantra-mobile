@@ -247,12 +247,12 @@ export default function WatchlistScreen() {
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20, paddingTop: 4 },
-    headerTitle: { fontSize: 26, fontWeight: '800', color: c.text },
-    headerSubtitle: { fontSize: 13, color: c.textSecondary, marginBottom: 8 },
-    searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, gap: 8, marginBottom: 8, borderWidth: 1, borderColor: c.border },
-    searchInput: { flex: 1, fontSize: 14, color: c.text, padding: 0 },
-    filterRow: { gap: 6, paddingBottom: 8, alignItems: 'center', height: 34 },
-    chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border, height: 26, justifyContent: 'center' },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 2 },
+    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 12 },
+    searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, gap: 10, marginBottom: 10, borderWidth: 1, borderColor: c.border },
+    searchInput: { flex: 1, fontSize: 15, color: c.text, padding: 0 },
+    filterRow: { gap: 6, paddingBottom: 10, alignItems: 'center', height: 32 },
+    chip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 14, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border, height: 28, justifyContent: 'center' },
     chipActive: { backgroundColor: c.accent, borderColor: c.accent },
     chipText: { fontSize: 12, fontWeight: '600', color: c.textSecondary },
     chipTextActive: { color: '#ffffff' },

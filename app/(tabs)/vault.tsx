@@ -445,9 +445,9 @@ export default function VaultScreen() {
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: c.background, padding: 24 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 4 },
-    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 16 },
+    container: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20, paddingTop: 4 },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 2 },
+    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 12 },
 
     // Segment control
     segmentTrack: { flexDirection: 'row', backgroundColor: c.surfaceSolid, borderRadius: 16, padding: 4, marginBottom: 16, position: 'relative', borderWidth: 1, borderColor: c.border },

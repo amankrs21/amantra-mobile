@@ -146,12 +146,11 @@ export default function MoreScreen() {
 
                 {renderSection('Settings', settingsItems)}
                 {renderSection('Security', securityItems)}
-                {renderSection('Data', dataItems)}
-                {renderSection('About', aboutItems)}
-
                 {renderSection('Critical', [
                     { key: 'deactivate', icon: 'account-remove', label: 'Deactivate Account', subtitle: 'Permanently delete your account and all data', accent: '#ef4444', danger: true, onPress: () => router.push({ pathname: '/(tabs)/account', params: { section: 'deactivate' } } as any) },
                 ])}
+                {renderSection('Data', dataItems)}
+                {renderSection('About', aboutItems)}
 
                 <Pressable style={styles.signOutButton} onPress={handleSignOut}>
                     <MaterialCommunityIcons name="logout" size={20} color="#fff" />
