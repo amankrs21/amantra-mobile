@@ -42,37 +42,69 @@ export default function NewsletterScreen() {
     const colors = useThemeColors();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
-    const [articles, setArticles] = useState<Article[]>([]);
+    const [allArticles, setAllArticles] = useState<Article[]>([]);
+    const [watchlistArticles, setWatchlistArticles] = useState<Article[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState('all');
+    const [hasFetched, setHasFetched] = useState(false);
+    const [hasWatchlistFetched, setHasWatchlistFetched] = useState(false);
 
-    const fetchArticles = useCallback(async (category: string, silent = false) => {
+    // Filtered articles — local filtering, no API call
+    const displayedArticles = useMemo(() => {
+        if (activeTab === 'watchlist') return watchlistArticles;
+        if (activeTab === 'all') return allArticles;
+        return allArticles.filter((a) => a.tag === activeTab);
+    }, [allArticles, watchlistArticles, activeTab]);
+
+    // Fetch all articles once
+    const fetchAll = useCallback(async (silent = false) => {
         if (!silent) setLoading(true);
         try {
-            const params = category !== 'all' ? `?category=${category}` : '';
-            const { data } = await api.get(`/newsletter/feed${params}`);
-            const list = data?.articles ?? (Array.isArray(data) ? data : []);
-            setArticles(list);
-            if (data?.message) {
-                Toast.show({ type: 'info', text1: data.message });
-            }
+            const { data } = await api.get('/newsletter/feed');
+            const list = data?.articles ?? [];
+            setAllArticles(list);
+            setHasFetched(true);
         } catch (error) {
             console.error('Newsletter fetch failed', error);
             if (!silent) Toast.show({ type: 'error', text1: 'Unable to load news.' });
-            setArticles([]);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
     }, []);
 
-    useEffect(() => { void fetchArticles(activeTab); }, [activeTab, fetchArticles]);
+    // Fetch watchlist articles (separate, personalized)
+    const fetchWatchlist = useCallback(async () => {
+        try {
+            const { data } = await api.get('/newsletter/feed?category=watchlist');
+            setWatchlistArticles(data?.articles ?? []);
+            if (data?.message) Toast.show({ type: 'info', text1: data.message });
+            setHasWatchlistFetched(true);
+        } catch (error) {
+            console.error('Watchlist news fetch failed', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!hasFetched) void fetchAll();
+    }, [fetchAll, hasFetched]);
+
+    // Lazy-load watchlist tab
+    useEffect(() => {
+        if (activeTab === 'watchlist' && !hasWatchlistFetched) void fetchWatchlist();
+    }, [activeTab, hasWatchlistFetched, fetchWatchlist]);
 
     const handleRefresh = useCallback(() => {
         setRefreshing(true);
-        void fetchArticles(activeTab, true);
-    }, [activeTab, fetchArticles]);
+        if (activeTab === 'watchlist') {
+            setHasWatchlistFetched(false);
+            void fetchWatchlist().finally(() => setRefreshing(false));
+        } else {
+            setHasFetched(false);
+            void fetchAll(true);
+        }
+    }, [activeTab, fetchAll, fetchWatchlist]);
 
     const handleOpen = useCallback(async (url: string) => {
         try { await Linking.openURL(url); }
@@ -103,30 +135,33 @@ export default function NewsletterScreen() {
         </Pressable>
     ), [colors, handleOpen, styles]);
 
+    const showLoading = loading && !hasFetched;
+    const showWatchlistLoading = activeTab === 'watchlist' && !hasWatchlistFetched;
+
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <Text style={styles.headerTitle}>Newsletter</Text>
-            <Text style={styles.headerSubtitle}>AI-curated news from the last 24 hours.</Text>
+            <Text style={styles.headerSubtitle}>AI-curated news from the last 48 hours.</Text>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
                 {TABS.map((tab) => (
                     <Pressable key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]} onPress={() => setActiveTab(tab.key)}>
-                        <MaterialCommunityIcons name={tab.icon as any} size={16} color={activeTab === tab.key ? '#fff' : colors.textSecondary} />
+                        <MaterialCommunityIcons name={tab.icon as any} size={14} color={activeTab === tab.key ? '#fff' : colors.textSecondary} />
                         <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
                     </Pressable>
                 ))}
             </ScrollView>
 
-            {loading ? (
+            {showLoading || showWatchlistLoading ? (
                 <View style={styles.loadingState}>
                     <ActivityIndicator size="large" color={colors.accent} />
                     <Text style={styles.loadingText}>Fetching & curating news...</Text>
                 </View>
             ) : (
                 <FlatList
-                    data={articles}
+                    data={displayedArticles}
                     keyExtractor={(item, index) => `${item.url}-${index}`}
-                    contentContainerStyle={articles.length === 0 ? styles.emptyList : { gap: 12, paddingBottom: 40 }}
+                    contentContainerStyle={displayedArticles.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 40 }}
                     renderItem={renderArticle}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
                     ListEmptyComponent={() => (
@@ -146,24 +181,24 @@ export default function NewsletterScreen() {
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20, paddingTop: 8 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 2 },
-    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 10 },
-    tabRow: { gap: 8, paddingBottom: 10 },
-    tab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border },
+    container: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20, paddingTop: 4 },
+    headerTitle: { fontSize: 26, fontWeight: '800', color: c.text },
+    headerSubtitle: { fontSize: 13, color: c.textSecondary, marginBottom: 8 },
+    tabRow: { gap: 6, paddingBottom: 8, height: 36 },
+    tab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border, height: 28 },
     tabActive: { backgroundColor: c.accent, borderColor: c.accent },
-    tabText: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
+    tabText: { fontSize: 12, fontWeight: '600', color: c.textSecondary },
     tabTextActive: { color: '#ffffff' },
-    card: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, borderRadius: 16, padding: 16, gap: 12, borderWidth: 1, borderColor: c.border },
-    cardContent: { flex: 1, gap: 6 },
-    cardTitle: { fontSize: 16, fontWeight: '700', color: c.text, lineHeight: 21 },
-    cardDesc: { fontSize: 14, color: c.textSecondary, lineHeight: 19 },
-    cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-    sourceText: { fontSize: 12, fontWeight: '600', color: c.accent },
-    tagBadge: { backgroundColor: c.border, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-    tagText: { fontSize: 11, fontWeight: '700', color: c.textSecondary, textTransform: 'uppercase' },
+    card: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, borderRadius: 14, padding: 14, gap: 10, borderWidth: 1, borderColor: c.border },
+    cardContent: { flex: 1, gap: 4 },
+    cardTitle: { fontSize: 15, fontWeight: '700', color: c.text, lineHeight: 20 },
+    cardDesc: { fontSize: 13, color: c.textSecondary, lineHeight: 18 },
+    cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+    sourceText: { fontSize: 11, fontWeight: '600', color: c.accent },
+    tagBadge: { backgroundColor: c.border, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
+    tagText: { fontSize: 10, fontWeight: '700', color: c.textSecondary, textTransform: 'uppercase' },
     hotBadge: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-    hotText: { fontSize: 11, fontWeight: '700', color: '#ef4444' },
+    hotText: { fontSize: 10, fontWeight: '700', color: '#ef4444' },
     loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     loadingText: { fontSize: 14, color: c.textSecondary },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },

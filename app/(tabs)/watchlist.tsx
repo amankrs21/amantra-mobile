@@ -7,6 +7,7 @@ import {
     StyleSheet,
     Switch,
     Text,
+    TextInput,
     View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -48,6 +49,7 @@ export default function WatchlistScreen() {
 
     const [items, setItems] = useState<WatchlistItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [hideWatched, setHideWatched] = useState(false);
     const [addVisible, setAddVisible] = useState(false);
@@ -56,10 +58,14 @@ export default function WatchlistScreen() {
 
     const filteredItems = useMemo(() => {
         let result = items;
+        if (searchTerm.trim()) {
+            const q = searchTerm.trim().toLowerCase();
+            result = result.filter((i) => i.title.toLowerCase().includes(q));
+        }
         if (categoryFilter !== 'all') result = result.filter((i) => i.category === categoryFilter);
         if (hideWatched) result = result.filter((i) => i.status !== 'watched');
         return result;
-    }, [items, categoryFilter, hideWatched]);
+    }, [items, searchTerm, categoryFilter, hideWatched]);
 
     const fetchItems = useCallback(async () => {
         try {
@@ -68,22 +74,19 @@ export default function WatchlistScreen() {
         } catch (error) {
             console.error('Watchlist fetch failed', error);
             Toast.show({ type: 'error', text1: 'Unable to load watchlist.' });
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     }, []);
 
     useEffect(() => { void fetchItems(); }, [fetchItems]);
 
     const handleAdd = useCallback(async (item: Omit<WatchlistItem, '_id'>) => {
-        showLoading('Adding to watchlist...');
+        showLoading('Adding...');
         try {
             await api.post('/watchlist/add', item);
-            Toast.show({ type: 'success', text1: 'Added to watchlist!' });
+            Toast.show({ type: 'success', text1: 'Added!' });
             await fetchItems();
-        } catch (error) {
-            Toast.show({ type: 'error', text1: 'Unable to add item.' });
-        } finally { hideLoading(); }
+        } catch { Toast.show({ type: 'error', text1: 'Unable to add.' }); }
+        finally { hideLoading(); }
     }, [fetchItems, hideLoading, showLoading]);
 
     const handleUpdate = useCallback(async (item: Omit<WatchlistItem, '_id'>) => {
@@ -94,9 +97,8 @@ export default function WatchlistScreen() {
             Toast.show({ type: 'success', text1: 'Updated!' });
             setEditItem(null);
             await fetchItems();
-        } catch (error) {
-            Toast.show({ type: 'error', text1: 'Unable to update.' });
-        } finally { hideLoading(); }
+        } catch { Toast.show({ type: 'error', text1: 'Unable to update.' }); }
+        finally { hideLoading(); }
     }, [editItem, fetchItems, hideLoading, showLoading]);
 
     const handleDelete = useCallback(async () => {
@@ -107,9 +109,8 @@ export default function WatchlistScreen() {
             Toast.show({ type: 'success', text1: `${deleteItem.title} removed.` });
             setDeleteItem(null);
             await fetchItems();
-        } catch (error) {
-            Toast.show({ type: 'error', text1: 'Unable to delete.' });
-        } finally { hideLoading(); }
+        } catch { Toast.show({ type: 'error', text1: 'Unable to delete.' }); }
+        finally { hideLoading(); }
     }, [deleteItem, fetchItems, hideLoading, showLoading]);
 
     const handleToggleWatched = useCallback(async (item: WatchlistItem) => {
@@ -117,9 +118,7 @@ export default function WatchlistScreen() {
         try {
             await api.put(`/watchlist/update/${item._id}`, { status: newStatus });
             setItems((prev) => prev.map((i) => i._id === item._id ? { ...i, status: newStatus } : i));
-        } catch (error) {
-            Toast.show({ type: 'error', text1: 'Unable to update status.' });
-        }
+        } catch { Toast.show({ type: 'error', text1: 'Unable to update.' }); }
     }, []);
 
     const handleToggleNews = useCallback(async (item: WatchlistItem) => {
@@ -127,9 +126,7 @@ export default function WatchlistScreen() {
             await api.put(`/watchlist/update/${item._id}`, { subscribeNews: !item.subscribeNews });
             setItems((prev) => prev.map((i) => i._id === item._id ? { ...i, subscribeNews: !i.subscribeNews } : i));
             Toast.show({ type: 'success', text1: item.subscribeNews ? 'Unsubscribed' : 'Subscribed to news' });
-        } catch (error) {
-            Toast.show({ type: 'error', text1: 'Failed to toggle.' });
-        }
+        } catch { Toast.show({ type: 'error', text1: 'Failed.' }); }
     }, []);
 
     const renderItem = useCallback(({ item }: { item: WatchlistItem }) => {
@@ -138,45 +135,36 @@ export default function WatchlistScreen() {
         return (
             <View style={[styles.card, isWatched && styles.cardWatched]}>
                 <View style={styles.cardRow}>
-                    {/* Watched checkbox */}
                     <Pressable style={styles.checkbox} onPress={() => handleToggleWatched(item)}>
                         <MaterialCommunityIcons
                             name={isWatched ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
-                            size={26}
+                            size={24}
                             color={isWatched ? '#10b981' : colors.textTertiary}
                         />
                     </Pressable>
-
-                    <View style={{ flex: 1, gap: 4 }}>
+                    <View style={{ flex: 1, gap: 2 }}>
                         <Text style={[styles.cardTitle, isWatched && styles.cardTitleWatched]}>{item.title}</Text>
                         <View style={styles.metaRow}>
-                            {catDef && catDef.key !== 'all' ? (
-                                <Text style={styles.metaText}>{catDef.label}</Text>
-                            ) : null}
+                            {catDef && catDef.key !== 'all' ? <Text style={styles.metaText}>{catDef.label}</Text> : null}
                             {item.year ? <Text style={styles.metaText}>{item.year}</Text> : null}
                             {item.rating ? (
                                 <View style={styles.ratingBadge}>
-                                    <MaterialCommunityIcons name="star" size={12} color="#f59e0b" />
+                                    <MaterialCommunityIcons name="star" size={11} color="#f59e0b" />
                                     <Text style={styles.ratingText}>{item.rating}/10</Text>
                                 </View>
                             ) : null}
                         </View>
                         {item.notes ? <Text style={styles.notesText} numberOfLines={1}>{item.notes}</Text> : null}
                     </View>
-
                     <View style={styles.cardActions}>
                         <Pressable onPress={() => handleToggleNews(item)}>
-                            <MaterialCommunityIcons
-                                name={item.subscribeNews ? 'bell-ring' : 'bell-outline'}
-                                size={20}
-                                color={item.subscribeNews ? '#f59e0b' : colors.textTertiary}
-                            />
+                            <MaterialCommunityIcons name={item.subscribeNews ? 'bell-ring' : 'bell-outline'} size={18} color={item.subscribeNews ? '#f59e0b' : colors.textTertiary} />
                         </Pressable>
                         <Pressable onPress={() => setEditItem(item)}>
-                            <MaterialCommunityIcons name="pencil-outline" size={20} color={colors.accent} />
+                            <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.accent} />
                         </Pressable>
                         <Pressable onPress={() => setDeleteItem(item)}>
-                            <MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.danger} />
+                            <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.danger} />
                         </Pressable>
                     </View>
                 </View>
@@ -189,14 +177,30 @@ export default function WatchlistScreen() {
             <Text style={styles.headerTitle}>Watchlist</Text>
             <Text style={styles.headerSubtitle}>Track movies & series you want to watch.</Text>
 
-            {/* Category filter */}
+            {/* Search bar */}
+            <View style={styles.searchRow}>
+                <MaterialCommunityIcons name="magnify" size={18} color={colors.placeholder} />
+                <TextInput
+                    placeholder="Search by title"
+                    placeholderTextColor={colors.placeholder}
+                    style={styles.searchInput}
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                />
+                {searchTerm ? (
+                    <Pressable onPress={() => setSearchTerm('')}>
+                        <MaterialCommunityIcons name="close" size={16} color={colors.textSecondary} />
+                    </Pressable>
+                ) : null}
+            </View>
+
+            {/* Filters */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
                 {CATEGORIES.map((cat) => (
                     <Pressable key={cat.key} style={[styles.chip, categoryFilter === cat.key && styles.chipActive]} onPress={() => setCategoryFilter(cat.key)}>
                         <Text style={[styles.chipText, categoryFilter === cat.key && styles.chipTextActive]}>{cat.label}</Text>
                     </Pressable>
                 ))}
-                {/* Hide watched toggle */}
                 <View style={styles.watchedToggle}>
                     <Text style={styles.watchedLabel}>Hide watched</Text>
                     <Switch
@@ -204,7 +208,7 @@ export default function WatchlistScreen() {
                         onValueChange={setHideWatched}
                         trackColor={{ true: '#10b981', false: colors.border }}
                         thumbColor="#fff"
-                        style={{ transform: [{ scale: 0.8 }] }}
+                        style={{ transform: [{ scale: 0.75 }] }}
                     />
                 </View>
             </ScrollView>
@@ -215,7 +219,7 @@ export default function WatchlistScreen() {
                 <FlatList
                     data={filteredItems}
                     keyExtractor={(item) => item._id}
-                    contentContainerStyle={filteredItems.length === 0 ? styles.emptyList : { gap: 12, paddingBottom: 120 }}
+                    contentContainerStyle={filteredItems.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
                     renderItem={renderItem}
                     ListEmptyComponent={() => (
                         <View style={styles.emptyState}>
@@ -242,28 +246,30 @@ export default function WatchlistScreen() {
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20, paddingTop: 8 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 2 },
-    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 10 },
-    filterRow: { gap: 8, paddingBottom: 8, alignItems: 'center' },
-    chip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border },
+    container: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20, paddingTop: 4 },
+    headerTitle: { fontSize: 26, fontWeight: '800', color: c.text },
+    headerSubtitle: { fontSize: 13, color: c.textSecondary, marginBottom: 8 },
+    searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, gap: 8, marginBottom: 8, borderWidth: 1, borderColor: c.border },
+    searchInput: { flex: 1, fontSize: 14, color: c.text, padding: 0 },
+    filterRow: { gap: 6, paddingBottom: 8, alignItems: 'center', height: 34 },
+    chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border, height: 26, justifyContent: 'center' },
     chipActive: { backgroundColor: c.accent, borderColor: c.accent },
-    chipText: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
+    chipText: { fontSize: 12, fontWeight: '600', color: c.textSecondary },
     chipTextActive: { color: '#ffffff' },
-    watchedToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 4 },
-    watchedLabel: { fontSize: 12, color: c.textSecondary, fontWeight: '600' },
-    card: { backgroundColor: c.surfaceSolid, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: c.border },
-    cardWatched: { opacity: 0.6 },
-    cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    checkbox: { width: 32, alignItems: 'center' },
-    cardTitle: { fontSize: 16, fontWeight: '700', color: c.text },
+    watchedToggle: { flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 2 },
+    watchedLabel: { fontSize: 11, color: c.textSecondary, fontWeight: '600' },
+    card: { backgroundColor: c.surfaceSolid, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: c.border },
+    cardWatched: { opacity: 0.55 },
+    cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    checkbox: { width: 28, alignItems: 'center' },
+    cardTitle: { fontSize: 15, fontWeight: '700', color: c.text },
     cardTitleWatched: { textDecorationLine: 'line-through', color: c.textSecondary },
-    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-    metaText: { fontSize: 12, color: c.textSecondary },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+    metaText: { fontSize: 11, color: c.textSecondary },
     ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-    ratingText: { fontSize: 12, color: '#f59e0b', fontWeight: '600' },
-    notesText: { fontSize: 13, color: c.textTertiary },
-    cardActions: { gap: 10, alignItems: 'center' },
+    ratingText: { fontSize: 11, color: '#f59e0b', fontWeight: '600' },
+    notesText: { fontSize: 12, color: c.textTertiary },
+    cardActions: { gap: 8, alignItems: 'center' },
     loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     emptyState: { alignItems: 'center', gap: 8, paddingTop: 48 },
