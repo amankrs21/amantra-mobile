@@ -59,12 +59,16 @@ export default function NewsletterScreen() {
 
     // Fetch all articles once
     const fetchAll = useCallback(async (silent = false) => {
-        if (!silent) setLoading(true);
+        if (!silent) {
+            setLoading(true);
+            Toast.show({ type: 'info', text1: '📰 Loading news...', text2: 'Fetching latest articles — this may take 15-30s on first load.', visibilityTime: 5000 });
+        }
         try {
             const { data } = await api.get('/newsletter/feed');
             const list = data?.articles ?? [];
             setAllArticles(list);
             setHasFetched(true);
+            if (!silent && list.length > 0) Toast.show({ type: 'success', text1: `${list.length} articles loaded!` });
         } catch (error) {
             console.error('Newsletter fetch failed', error);
             if (!silent) Toast.show({ type: 'error', text1: 'Unable to load news.' });
@@ -87,8 +91,9 @@ export default function NewsletterScreen() {
     }, []);
 
     useEffect(() => {
-        if (!hasFetched) void fetchAll();
-    }, [fetchAll, hasFetched]);
+        if (!hasFetched) { void fetchAll(); }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Lazy-load watchlist tab
     useEffect(() => {

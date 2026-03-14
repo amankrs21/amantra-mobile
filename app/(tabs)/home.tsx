@@ -185,18 +185,18 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.weatherCard}>
-                <LinearGradient colors={[...colors.headerGradient]} style={styles.weatherGradient}>
+                <LinearGradient colors={[...colors.weatherGradient]} style={styles.weatherGradient}>
                     <View style={styles.weatherHeader}>
                         <Text style={styles.weatherTitle}>Today&apos;s Weather</Text>
-                        <MaterialCommunityIcons name="weather-partly-cloudy" size={32} color="#facc15" />
+                        <MaterialCommunityIcons name="weather-partly-cloudy" size={32} color="#f59e0b" />
                     </View>
                     <Text style={styles.weatherSubtitle}>Stay ahead with live climate updates powered by OpenWeather.</Text>
 
                     <View style={styles.searchRow}>
-                        <MaterialCommunityIcons name="map-marker" size={22} color="#a5b4fc" />
+                        <MaterialCommunityIcons name="map-marker" size={22} color={colors.weatherTextSecondary} />
                         <TextInput
                             placeholder="Search city"
-                            placeholderTextColor="rgba(226, 232, 240, 0.6)"
+                            placeholderTextColor={colors.placeholder}
                             style={styles.searchInput}
                             value={city}
                             onChangeText={setCity}
@@ -205,7 +205,7 @@ export default function HomeScreen() {
                             autoCapitalize="words"
                         />
                         <Pressable style={[styles.searchButton, isFetching && styles.searchButtonDisabled]} onPress={() => handleSearch()} disabled={isFetching}>
-                            <MaterialCommunityIcons name="magnify" size={20} color="#0f172a" />
+                            <MaterialCommunityIcons name="magnify" size={20} color="#fff" />
                         </Pressable>
                     </View>
 
@@ -221,7 +221,7 @@ export default function HomeScreen() {
                             <View style={styles.metricGrid}>
                                 {weatherMetrics.map((metric) => (
                                     <View key={metric.label} style={styles.metricCard}>
-                                        <MaterialCommunityIcons name={metric.icon as any} size={22} color="#38bdf8" />
+                                        <MaterialCommunityIcons name={metric.icon as any} size={22} color={colors.tint} />
                                         <Text style={styles.metricLabel}>{metric.label}</Text>
                                         <Text style={styles.metricValue}>{metric.value}</Text>
                                     </View>
@@ -230,7 +230,7 @@ export default function HomeScreen() {
                         </View>
                     ) : (
                         <View style={styles.noWeatherState}>
-                            <MaterialCommunityIcons name="cloud-alert" size={48} color="#fca5a5" />
+                            <MaterialCommunityIcons name="cloud-alert" size={48} color={colors.danger} />
                             <Text style={styles.noWeatherText}>Search for a city to view the latest forecast.</Text>
                         </View>
                     )}
@@ -278,23 +278,23 @@ const createStyles = (c: ThemeColors) =>
         weatherCard: { borderRadius: 32, overflow: 'hidden' },
         weatherGradient: { padding: 24, gap: 18 },
         weatherHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-        weatherTitle: { fontSize: 20, fontWeight: '600', color: '#e0f2fe' },
-        weatherSubtitle: { fontSize: 14, color: 'rgba(191, 219, 254, 0.8)' },
-        searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 18, paddingHorizontal: 16, gap: 12 },
-        searchInput: { flex: 1, color: '#f8fafc', paddingVertical: Platform.select({ ios: 14, default: 10 }) },
-        searchButton: { backgroundColor: '#f8fafc', padding: 10, borderRadius: 12 },
+        weatherTitle: { fontSize: 20, fontWeight: '600', color: c.weatherText },
+        weatherSubtitle: { fontSize: 14, color: c.weatherTextSecondary },
+        searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.weatherMetricBg, borderRadius: 18, paddingHorizontal: 16, gap: 12 },
+        searchInput: { flex: 1, color: c.weatherText, paddingVertical: Platform.select({ ios: 14, default: 10 }) },
+        searchButton: { backgroundColor: c.accent, padding: 10, borderRadius: 12 },
         searchButtonDisabled: { opacity: 0.6 },
         weatherBody: { gap: 20 },
         weatherSummary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-        weatherLocation: { fontSize: 22, fontWeight: '700', color: '#f8fafc' },
-        weatherDescription: { fontSize: 15, color: 'rgba(224, 242, 254, 0.85)', marginTop: 4 },
-        weatherTemp: { fontSize: 48, fontWeight: '800', color: '#f8fafc' },
+        weatherLocation: { fontSize: 22, fontWeight: '700', color: c.weatherText },
+        weatherDescription: { fontSize: 15, color: c.weatherTextSecondary, marginTop: 4 },
+        weatherTemp: { fontSize: 48, fontWeight: '800', color: c.weatherText },
         metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-        metricCard: { width: '30%', minWidth: 110, padding: 12, borderRadius: 16, backgroundColor: 'rgba(15, 23, 42, 0.3)', gap: 6 },
-        metricLabel: { fontSize: 13, color: 'rgba(226, 232, 240, 0.75)' },
-        metricValue: { fontSize: 14, fontWeight: '600', color: '#f8fafc' },
+        metricCard: { width: '30%', minWidth: 110, padding: 12, borderRadius: 16, backgroundColor: c.weatherMetricBg, gap: 6 },
+        metricLabel: { fontSize: 13, color: c.weatherTextSecondary },
+        metricValue: { fontSize: 14, fontWeight: '600', color: c.weatherText },
         noWeatherState: { alignItems: 'center', gap: 12, paddingVertical: 16 },
-        noWeatherText: { color: '#fee2e2', textAlign: 'center' },
+        noWeatherText: { color: c.weatherTextSecondary, textAlign: 'center' },
         toolHeadingRow: { gap: 8 },
         toolHeading: { fontSize: 22, fontWeight: '700', color: c.text },
         toolCaption: { fontSize: 14, color: c.textSecondary },

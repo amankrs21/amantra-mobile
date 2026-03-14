@@ -42,7 +42,7 @@ export default function RootLayout() {
           <LoadingProvider>
             <InnerLayout />
             <LoadingOverlay />
-            <Toast />
+            <Toast position="bottom" bottomOffset={80} />
           </LoadingProvider>
         </AuthProvider>
       </ThemeProvider>
