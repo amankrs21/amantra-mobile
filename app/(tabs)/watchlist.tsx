@@ -166,7 +166,7 @@ export default function WatchlistScreen() {
                     </Pressable>
                     <Pressable style={{ flex: 1, gap: 2 }} onPress={() => hasParts ? setExpandedId(isExpanded ? null : item._id) : undefined}>
                         <Text style={[styles.cardTitle, isWatched && styles.cardTitleWatched]}>{item.title}</Text>
-                        {item.notes ? <Text style={styles.notesText} numberOfLines={2}>{item.notes}</Text> : null}
+                        {item.notes ? <Text style={styles.notesText} numberOfLines={1}>{item.notes.length > 40 ? item.notes.slice(0, 40) + '…' : item.notes}</Text> : null}
                         <View style={styles.metaRow}>
                             {catDef ? (
                                 <View style={[styles.catBadge, { backgroundColor: `${catDef.color}18` }]}>
@@ -261,7 +261,7 @@ export default function WatchlistScreen() {
                 <FlatList
                     data={filteredItems}
                     keyExtractor={(item) => item._id}
-                    contentContainerStyle={filteredItems.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
+                    contentContainerStyle={filteredItems.length === 0 ? styles.emptyList : { gap: 8, paddingBottom: 120 }}
                     renderItem={renderItem}
                     ListEmptyComponent={() => (
                         <View style={styles.emptyState}>
@@ -297,11 +297,11 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     hideWatchedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
     hideWatchedLabel: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
     hideWatchedCount: { fontSize: 12, color: c.textTertiary },
-    card: { backgroundColor: c.surfaceSolid, borderRadius: 18, padding: 14, borderWidth: 1, borderColor: c.border },
+    card: { backgroundColor: c.surfaceSolid, borderRadius: 16, padding: 12, borderWidth: 1, borderColor: c.border },
     cardWatched: { opacity: 0.55 },
-    cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     checkbox: { width: 28, alignItems: 'center' },
-    cardTitle: { fontSize: 16, fontWeight: '700', color: c.text },
+    cardTitle: { fontSize: 15, fontWeight: '700', color: c.text },
     cardTitleWatched: { textDecorationLine: 'line-through', color: c.textSecondary },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 },
     catBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },

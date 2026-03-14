@@ -37,32 +37,35 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
         <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
             <SafeAreaView style={styles.overlay}>
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-                <View style={styles.card}>
-                    <Text style={styles.title}>{mode === 'create' ? 'Add Secure Note' : 'Update Note'}</Text>
-                    <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Title</Text>
-                            <TextInput style={styles.input} placeholder="Daily reflections" placeholderTextColor={colors.placeholder} value={formValues.title} autoCapitalize="words" onChangeText={(text) => setFormValues((prev) => ({ ...prev, title: text }))} />
+                <View style={styles.sheet}>
+                    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                        <View style={styles.handleBar} />
+                        <Text style={styles.sheetTitle}>{mode === 'create' ? 'Add Secure Note' : 'Update Note'}</Text>
+
+                        <View style={styles.fieldGroup}>
+                            <Text style={styles.label}>Title *</Text>
+                            <TextInput style={styles.input} placeholder="e.g. Daily reflections" placeholderTextColor={colors.placeholder} value={formValues.title} autoCapitalize="words" onChangeText={(text) => setFormValues((prev) => ({ ...prev, title: text }))} />
                         </View>
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Content</Text>
+                        <View style={styles.fieldGroup}>
+                            <Text style={styles.label}>Content *</Text>
                             <TextInput style={[styles.input, styles.textArea]} placeholder="Write your thoughts securely..." placeholderTextColor={colors.placeholder} value={formValues.content} multiline autoCapitalize="sentences" onChangeText={(text) => setFormValues((prev) => ({ ...prev, content: text }))} />
                         </View>
                         {categories && onCategoryChange ? (
-                            <View style={styles.field}>
+                            <View style={styles.fieldGroup}>
                                 <Text style={styles.label}>Category</Text>
                                 <CategoryPicker categories={categories} selected={categoryKey ?? null} onSelect={onCategoryChange} />
                             </View>
                         ) : null}
+
+                        <View style={styles.buttonRow}>
+                            <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose} disabled={isSubmitting}>
+                                <Text style={[styles.buttonLabel, styles.cancelLabel]}>Cancel</Text>
+                            </Pressable>
+                            <Pressable style={[styles.button, styles.submitButton, isSubmitting && { opacity: 0.6 }]} onPress={handleSubmit} disabled={isSubmitting}>
+                                <Text style={styles.buttonLabel}>{isSubmitting ? 'Saving…' : mode === 'create' ? 'Add Note' : 'Save Changes'}</Text>
+                            </Pressable>
+                        </View>
                     </ScrollView>
-                    <View style={styles.buttonRow}>
-                        <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose} disabled={isSubmitting}>
-                            <Text style={[styles.buttonLabel, styles.cancelLabel]}>Cancel</Text>
-                        </Pressable>
-                        <Pressable style={[styles.button, styles.submitButton, isSubmitting && styles.disabledButton]} onPress={handleSubmit} disabled={isSubmitting}>
-                            <Text style={styles.buttonLabel}>{isSubmitting ? 'Saving…' : mode === 'create' ? 'Add Note' : 'Save Changes'}</Text>
-                        </Pressable>
-                    </View>
                 </View>
             </SafeAreaView>
         </Modal>
@@ -70,19 +73,18 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: c.overlay, justifyContent: 'center', padding: 24 },
-    card: { backgroundColor: c.surfaceSolid, borderRadius: 24, padding: 24, maxHeight: '90%', gap: 16, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 20, elevation: 10, borderWidth: 1, borderColor: c.border },
-    title: { fontSize: 20, fontWeight: '700', color: c.text },
-    form: { gap: 16 },
-    field: { gap: 8 },
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: c.surfaceSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%', borderWidth: 1, borderColor: c.border },
+    handleBar: { width: 40, height: 4, borderRadius: 2, backgroundColor: c.textTertiary, alignSelf: 'center', marginBottom: 16 },
+    sheetTitle: { fontSize: 22, fontWeight: '700', color: c.text, marginBottom: 20 },
+    fieldGroup: { gap: 6, marginBottom: 16 },
     label: { fontSize: 14, fontWeight: '600', color: c.textSecondary },
-    input: { borderWidth: 1, borderColor: c.inputBorder, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: c.text, backgroundColor: c.inputBg },
-    textArea: { minHeight: 160, textAlignVertical: 'top' },
-    buttonRow: { flexDirection: 'row', gap: 12 },
-    button: { flex: 1, borderRadius: 16, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
-    cancelButton: { backgroundColor: c.cancelBg },
-    submitButton: { backgroundColor: c.tint },
-    disabledButton: { opacity: 0.6 },
+    input: { borderWidth: 1, borderColor: c.inputBorder, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: c.text, backgroundColor: c.inputBg },
+    textArea: { minHeight: 140, textAlignVertical: 'top' },
+    buttonRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
+    button: { flex: 1, borderRadius: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+    cancelButton: { backgroundColor: c.border },
+    submitButton: { backgroundColor: c.accent },
     buttonLabel: { fontSize: 16, fontWeight: '600', color: '#fff' },
-    cancelLabel: { color: c.cancelText },
+    cancelLabel: { color: c.text },
 });

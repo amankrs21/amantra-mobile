@@ -282,31 +282,41 @@ export default function VaultScreen() {
         const catDef = catKey ? getCategoryDef('vault', catKey) : undefined;
         return (
             <View style={styles.itemCard}>
-                <View style={{ flex: 1, gap: 6 }}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Pressable onPress={() => handleCopy(item.username, 'Username')}>
-                        <Text style={styles.itemSubtitle}>{item.username}</Text>
-                    </Pressable>
-                    {catDef ? <CategoryBadge category={catDef} size="small" /> : null}
-                    <Text style={styles.itemTimestamp}>{new Date(item.updatedAt).toLocaleString()}</Text>
+                {/* Left: icon circle */}
+                <View style={styles.itemIcon}>
+                    <Text style={styles.itemIconText}>{item.title.charAt(0).toUpperCase()}</Text>
                 </View>
+                {/* Center: info */}
+                <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
+                    <Pressable onPress={() => handleCopy(item.username, 'Username')}>
+                        <Text style={styles.itemSubtitle} numberOfLines={1}>{item.username}</Text>
+                    </Pressable>
+                    <View style={styles.itemMetaRow}>
+                        {catDef ? <CategoryBadge category={catDef} size="small" /> : null}
+                        <Text style={styles.itemTimestamp}>{new Date(item.updatedAt).toLocaleDateString()}</Text>
+                    </View>
+                </View>
+                {/* Right: actions */}
                 <View style={styles.itemActions}>
                     {revealed ? (
                         <Pressable style={styles.revealedBadge} onPress={() => handleCopy(revealed, 'Password')}>
-                            <Text style={styles.revealedLabel}>{revealed}</Text>
+                            <Text style={styles.revealedLabel} numberOfLines={1}>{revealed.length > 16 ? revealed.slice(0, 16) + '…' : revealed}</Text>
+                            <MaterialCommunityIcons name="content-copy" size={14} color={colors.tint} />
                         </Pressable>
                     ) : (
                         <Pressable style={styles.revealButton} onPress={() => handleReveal(item)}>
-                            <MaterialCommunityIcons name="eye-outline" size={18} color={colors.revealButtonText} />
-                            <Text style={styles.revealLabel}>Reveal</Text>
+                            <MaterialCommunityIcons name="eye-outline" size={16} color={colors.revealButtonText} />
                         </Pressable>
                     )}
-                    <Pressable style={styles.iconButton} onPress={() => handlePrepareEditPassword(item)}>
-                        <MaterialCommunityIcons name="pencil" size={18} color={colors.accent} />
-                    </Pressable>
-                    <Pressable style={styles.iconButton} onPress={() => setDeleteEntry(item)}>
-                        <MaterialCommunityIcons name="trash-can" size={18} color={colors.danger} />
-                    </Pressable>
+                    <View style={styles.itemActionRow}>
+                        <Pressable style={styles.iconButton} onPress={() => handlePrepareEditPassword(item)}>
+                            <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.accent} />
+                        </Pressable>
+                        <Pressable style={styles.iconButton} onPress={() => setDeleteEntry(item)}>
+                            <MaterialCommunityIcons name="trash-can-outline" size={16} color={colors.danger} />
+                        </Pressable>
+                    </View>
                 </View>
             </View>
         );
@@ -393,7 +403,7 @@ export default function VaultScreen() {
                 <FlatList
                     data={filteredEntries}
                     keyExtractor={(item) => item._id}
-                    contentContainerStyle={filteredEntries.length === 0 ? styles.emptyList : { gap: 16, paddingBottom: 120 }}
+                    contentContainerStyle={filteredEntries.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
                     renderItem={renderPasswordItem}
                     ListEmptyComponent={() => (
                         <View style={styles.emptyState}>
@@ -410,7 +420,7 @@ export default function VaultScreen() {
                 <FlatList
                     data={filteredNotes}
                     keyExtractor={(item) => item._id}
-                    contentContainerStyle={filteredNotes.length === 0 ? styles.emptyList : { gap: 16, paddingBottom: 120 }}
+                    contentContainerStyle={filteredNotes.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
                     renderItem={renderNoteItem}
                     ListEmptyComponent={() => (
                         <View style={styles.emptyState}>
@@ -464,26 +474,30 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     clearButton: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: c.cancelBg },
 
     // Password items
-    itemCard: { backgroundColor: c.surfaceSolid, borderRadius: 18, padding: 18, flexDirection: 'row', gap: 16, alignItems: 'center', shadowColor: c.cardShadow, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: c.border },
-    itemTitle: { fontSize: 18, fontWeight: '600', color: c.text },
-    itemSubtitle: { fontSize: 14, color: c.tint },
-    itemTimestamp: { fontSize: 12, color: c.textSecondary },
-    itemActions: { gap: 12, alignItems: 'flex-end' },
-    revealButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.revealButtonBg, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+    itemCard: { backgroundColor: c.surfaceSolid, borderRadius: 18, padding: 14, flexDirection: 'row', gap: 12, alignItems: 'center', borderWidth: 1, borderColor: c.border },
+    itemIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: `${c.accent}15`, alignItems: 'center', justifyContent: 'center' },
+    itemIconText: { fontSize: 18, fontWeight: '800', color: c.accent },
+    itemTitle: { fontSize: 16, fontWeight: '700', color: c.text },
+    itemSubtitle: { fontSize: 13, color: c.tint },
+    itemMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+    itemTimestamp: { fontSize: 11, color: c.textTertiary },
+    itemActions: { alignItems: 'flex-end', gap: 8 },
+    itemActionRow: { flexDirection: 'row', gap: 6 },
+    revealButton: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: c.revealButtonBg },
     revealLabel: { fontSize: 13, fontWeight: '600', color: c.revealButtonText },
-    iconButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: c.iconButtonBg },
-    revealedBadge: { backgroundColor: c.revealBadge, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-    revealedLabel: { color: '#0f172a', fontWeight: '600' },
+    iconButton: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: c.iconButtonBg },
+    revealedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.revealBadge, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, maxWidth: 160 },
+    revealedLabel: { fontSize: 13, fontWeight: '600', color: '#0f172a', flexShrink: 1 },
 
     // Note items
-    noteCard: { backgroundColor: c.surfaceSolid, borderRadius: 20, padding: 18, gap: 12, shadowColor: c.cardShadow, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: c.border },
+    noteCard: { backgroundColor: c.surfaceSolid, borderRadius: 18, padding: 14, gap: 10, borderWidth: 1, borderColor: c.border },
     noteHeader: { flexDirection: 'row', alignItems: 'center' },
-    noteTitle: { fontSize: 18, fontWeight: '600', color: c.text },
-    noteTimestamp: { fontSize: 12, color: c.textSecondary },
-    noteContent: { fontSize: 15, color: c.text, lineHeight: 20 },
-    noteActions: { flexDirection: 'row', gap: 12 },
-    noteActionButton: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.surfaceSolid, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, shadowColor: c.cardShadow, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: c.border },
-    noteActionLabel: { fontSize: 13, fontWeight: '600', color: c.text },
+    noteTitle: { fontSize: 16, fontWeight: '700', color: c.text },
+    noteTimestamp: { fontSize: 11, color: c.textTertiary },
+    noteContent: { fontSize: 14, color: c.text, lineHeight: 20 },
+    noteActions: { flexDirection: 'row', gap: 10 },
+    noteActionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: c.iconButtonBg },
+    noteActionLabel: { fontSize: 12, fontWeight: '600', color: c.text },
 
     // Shared
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
