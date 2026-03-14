@@ -140,14 +140,18 @@ export default function MoreScreen() {
                 </View>
 
                 {renderSection('Profile', [
-                    { key: 'account', icon: 'account-edit', label: 'Edit Profile', subtitle: 'Update name, date of birth, and more', accent: '#2563eb', onPress: () => router.push('/(tabs)/account' as any) },
-                    { key: 'change-password', icon: 'lock-reset', label: 'Change Password', subtitle: 'Update your login password', accent: '#8b5cf6', onPress: () => router.push('/(tabs)/account' as any) },
+                    { key: 'account', icon: 'account-edit', label: 'Edit Profile', subtitle: 'Update name, date of birth, and more', accent: '#2563eb', onPress: () => router.push({ pathname: '/(tabs)/account', params: { section: 'profile' } } as any) },
+                    { key: 'change-password', icon: 'lock-reset', label: 'Change Password', subtitle: 'Update your login password', accent: '#8b5cf6', onPress: () => router.push({ pathname: '/(tabs)/account', params: { section: 'password' } } as any) },
                 ])}
 
                 {renderSection('Settings', settingsItems)}
                 {renderSection('Security', securityItems)}
                 {renderSection('Data', dataItems)}
                 {renderSection('About', aboutItems)}
+
+                {renderSection('Critical', [
+                    { key: 'deactivate', icon: 'account-remove', label: 'Deactivate Account', subtitle: 'Permanently delete your account and all data', accent: '#ef4444', danger: true, onPress: () => router.push({ pathname: '/(tabs)/account', params: { section: 'deactivate' } } as any) },
+                ])}
 
                 <Pressable style={styles.signOutButton} onPress={handleSignOut}>
                     <MaterialCommunityIcons name="logout" size={20} color="#fff" />

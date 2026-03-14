@@ -121,8 +121,8 @@ export default function TabLayout() {
         <Tabs.Screen
           name="more"
           options={{
-            title: 'More',
-            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="dots-horizontal" color={color} />,
+            title: 'Menu',
+            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="menu" color={color} />,
           }}
         />
         {/* Hidden tabs - still accessible but not in tab bar */}
