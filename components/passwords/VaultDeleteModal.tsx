@@ -1,29 +1,25 @@
+import { useMemo } from 'react';
 import { Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-export type VaultDeleteModalProps = {
-    visible: boolean;
-    onClose: () => void;
-    onConfirm: () => Promise<void> | void;
-    title: string;
-};
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { ThemeColors } from '@/constants/theme';
+
+export type VaultDeleteModalProps = { visible: boolean; onClose: () => void; onConfirm: () => Promise<void> | void; title: string };
 
 export default function VaultDeleteModal({ visible, onClose, onConfirm, title }: VaultDeleteModalProps) {
+    const colors = useThemeColors();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     return (
         <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
             <SafeAreaView style={styles.overlay}>
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
                 <View style={styles.card}>
                     <Text style={styles.title}>Delete this password?</Text>
-                    <Text style={styles.subtitle}>
-                        You are about to delete <Text style={{ fontWeight: '700' }}>{title}</Text>. This action cannot be undone.
-                    </Text>
+                    <Text style={styles.subtitle}>You are about to delete <Text style={{ fontWeight: '700' }}>{title}</Text>. This action cannot be undone.</Text>
                     <View style={styles.buttonRow}>
-                        <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>
-                            <Text style={[styles.buttonLabel, styles.cancelLabel]}>Cancel</Text>
-                        </Pressable>
-                        <Pressable style={[styles.button, styles.deleteButton]} onPress={onConfirm}>
-                            <Text style={styles.buttonLabel}>Delete</Text>
-                        </Pressable>
+                        <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}><Text style={[styles.buttonLabel, styles.cancelLabel]}>Cancel</Text></Pressable>
+                        <Pressable style={[styles.button, styles.deleteButton]} onPress={onConfirm}><Text style={styles.buttonLabel}>Delete</Text></Pressable>
                     </View>
                 </View>
             </SafeAreaView>
@@ -31,56 +27,15 @@ export default function VaultDeleteModal({ visible, onClose, onConfirm, title }:
     );
 }
 
-const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.6)',
-        justifyContent: 'center',
-        padding: 24,
-    },
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: 24,
-        padding: 24,
-        gap: 18,
-        shadowColor: '#000',
-        shadowOpacity: 0.25,
-        shadowRadius: 24,
-        elevation: 12,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#0f172a',
-    },
-    subtitle: {
-        fontSize: 14,
-        color: 'rgba(15, 23, 42, 0.65)',
-        lineHeight: 20,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    button: {
-        flex: 1,
-        borderRadius: 16,
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cancelButton: {
-        backgroundColor: 'rgba(15, 23, 42, 0.08)',
-    },
-    deleteButton: {
-        backgroundColor: '#ef4444',
-    },
-    buttonLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    cancelLabel: {
-        color: '#0f172a',
-    },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: c.overlay, justifyContent: 'center', padding: 24 },
+    card: { backgroundColor: c.surfaceSolid, borderRadius: 24, padding: 24, gap: 18, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 24, elevation: 12, borderWidth: 1, borderColor: c.border },
+    title: { fontSize: 20, fontWeight: '700', color: c.text },
+    subtitle: { fontSize: 14, color: c.textSecondary, lineHeight: 20 },
+    buttonRow: { flexDirection: 'row', gap: 12 },
+    button: { flex: 1, borderRadius: 16, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+    cancelButton: { backgroundColor: c.cancelBg },
+    deleteButton: { backgroundColor: c.danger },
+    buttonLabel: { fontSize: 16, fontWeight: '600', color: '#fff' },
+    cancelLabel: { color: c.cancelText },
 });

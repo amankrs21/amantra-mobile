@@ -1,41 +1,114 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Comprehensive color tokens for light and dark themes.
+ * Light theme uses warm, glassy tones; dark theme uses deep charcoal.
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    background: '#faf7f4',
+    surface: 'rgba(255, 255, 253, 0.85)',
+    surfaceSolid: '#fffdf9',
+    text: '#1a1512',
+    textSecondary: '#6b5e54',
+    textTertiary: 'rgba(26, 21, 18, 0.4)',
+    tint: '#0a7ea4',
+    accent: '#2563eb',
+    border: 'rgba(26, 21, 18, 0.08)',
+    headerGradient: ['#0f172a', '#1e3a8a'] as const,
+    headerBg: '#020617',
+    icon: '#6b5e54',
+    tabBar: '#fffdf9',
+    tabBarBorder: 'rgba(26, 21, 18, 0.06)',
+    tabIconDefault: '#8a7e74',
+    tabIconSelected: '#0a7ea4',
+    danger: '#ef4444',
+    dangerBg: '#ffe4e6',
+    dangerText: '#9f1239',
+    success: '#10b981',
+    warning: '#f59e0b',
+    fab: '#2563eb',
+    fabIcon: '#ffffff',
+    cardShadow: 'rgba(26, 21, 18, 0.08)',
+    inputBg: '#fffdf9',
+    inputBorder: 'rgba(26, 21, 18, 0.1)',
+    placeholder: 'rgba(26, 21, 18, 0.35)',
+    revealBadge: '#22d3ee',
+    overlay: 'rgba(15, 23, 42, 0.55)',
+    cancelBg: 'rgba(26, 21, 18, 0.06)',
+    cancelText: '#1a1512',
+    disabledBg: 'rgba(26, 21, 18, 0.04)',
+    disabledText: 'rgba(26, 21, 18, 0.6)',
+    iconButtonBg: 'rgba(148, 163, 184, 0.18)',
+    revealButtonBg: 'rgba(37, 99, 235, 0.15)',
+    revealButtonText: '#1e3a8a',
+    signOutBg: '#1e293b',
+    sectionTitle: 'rgba(26, 21, 18, 0.55)',
+    rowPressed: 'rgba(26, 21, 18, 0.04)',
+    chevron: 'rgba(26, 21, 18, 0.25)',
+    biometricBg: 'rgba(10, 126, 164, 0.1)',
+    biometricBorder: 'rgba(10, 126, 164, 0.3)',
+    generatorBg: 'rgba(26, 21, 18, 0.04)',
+    chipBg: 'rgba(26, 21, 18, 0.08)',
+    chipText: '#1a1512',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    background: '#0f0f0f',
+    surface: 'rgba(30, 30, 30, 0.9)',
+    surfaceSolid: '#1e1e1e',
+    text: '#e8e0d8',
+    textSecondary: '#9a8f85',
+    textTertiary: 'rgba(232, 224, 216, 0.35)',
+    tint: '#38bdf8',
+    accent: '#60a5fa',
+    border: 'rgba(255, 255, 255, 0.08)',
+    headerGradient: ['#0a0f1a', '#162044'] as const,
+    headerBg: '#1a1a1a',
+    icon: '#9a8f85',
+    tabBar: '#1a1a1a',
+    tabBarBorder: 'rgba(255, 255, 255, 0.06)',
+    tabIconDefault: '#6b6360',
+    tabIconSelected: '#38bdf8',
+    danger: '#f87171',
+    dangerBg: 'rgba(248, 113, 113, 0.12)',
+    dangerText: '#f87171',
+    success: '#34d399',
+    warning: '#fbbf24',
+    fab: '#2563eb',
+    fabIcon: '#ffffff',
+    cardShadow: 'rgba(0, 0, 0, 0.3)',
+    inputBg: '#252525',
+    inputBorder: 'rgba(255, 255, 255, 0.1)',
+    placeholder: 'rgba(232, 224, 216, 0.3)',
+    revealBadge: '#0e7490',
+    overlay: 'rgba(0, 0, 0, 0.7)',
+    cancelBg: 'rgba(255, 255, 255, 0.08)',
+    cancelText: '#e8e0d8',
+    disabledBg: 'rgba(255, 255, 255, 0.04)',
+    disabledText: 'rgba(232, 224, 216, 0.5)',
+    iconButtonBg: 'rgba(255, 255, 255, 0.1)',
+    revealButtonBg: 'rgba(56, 189, 248, 0.15)',
+    revealButtonText: '#38bdf8',
+    signOutBg: '#252525',
+    sectionTitle: 'rgba(232, 224, 216, 0.5)',
+    rowPressed: 'rgba(255, 255, 255, 0.04)',
+    chevron: 'rgba(255, 255, 255, 0.2)',
+    biometricBg: 'rgba(56, 189, 248, 0.1)',
+    biometricBorder: 'rgba(56, 189, 248, 0.3)',
+    generatorBg: 'rgba(255, 255, 255, 0.05)',
+    chipBg: 'rgba(255, 255, 255, 0.1)',
+    chipText: '#e8e0d8',
   },
 };
 
+export type ThemeColors = typeof Colors.light | typeof Colors.dark;
+
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

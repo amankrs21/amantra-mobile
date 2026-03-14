@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Modal,
     Pressable,
@@ -10,16 +10,15 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { Colors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { ThemeColors } from '@/constants/theme';
 
 export type EncryptionKeyModalProps = {
     visible: boolean;
     onClose: () => void;
     onConfirm: (key: string) => Promise<void> | void;
     caption?: string;
-    /** If provided, show a biometric button that calls this */
     onBiometric?: () => Promise<void> | void;
-    /** Whether biometric is available and enabled */
     biometricAvailable?: boolean;
 };
 
@@ -33,26 +32,20 @@ export default function EncryptionKeyModal({
 }: EncryptionKeyModalProps) {
     const [key, setKey] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const colors = useThemeColors();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     useEffect(() => {
         if (visible && biometricAvailable && onBiometric) {
-            // Auto-trigger biometric on open
             void onBiometric();
         }
-    }, [visible]); // intentionally minimal deps — only trigger on visibility change
+    }, [visible]); // intentionally minimal deps
 
     const handleSubmit = async () => {
-        if (!key.trim()) {
-            return;
-        }
+        if (!key.trim()) return;
         setIsSubmitting(true);
-        try {
-            await onConfirm(key.trim());
-            setKey('');
-            onClose();
-        } finally {
-            setIsSubmitting(false);
-        }
+        try { await onConfirm(key.trim()); setKey(''); onClose(); }
+        finally { setIsSubmitting(false); }
     };
 
     return (
@@ -61,36 +54,21 @@ export default function EncryptionKeyModal({
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
                 <View style={styles.card}>
                     <Text style={styles.title}>Enter Encryption PIN</Text>
-                    <Text style={styles.subtitle}>
-                        {caption ?? 'Enter your encryption PIN to securely access your data.'}
-                    </Text>
+                    <Text style={styles.subtitle}>{caption ?? 'Enter your encryption PIN to securely access your data.'}</Text>
 
                     {biometricAvailable && onBiometric ? (
                         <Pressable style={styles.biometricButton} onPress={onBiometric}>
-                            <MaterialCommunityIcons name="fingerprint" size={32} color={Colors.light.tint} />
+                            <MaterialCommunityIcons name="fingerprint" size={32} color={colors.tint} />
                             <Text style={styles.biometricLabel}>Tap to unlock with biometrics</Text>
                         </Pressable>
                     ) : null}
 
-                    <TextInput
-                        value={key}
-                        onChangeText={setKey}
-                        placeholder="Enter your encryption PIN"
-                        placeholderTextColor="rgba(15, 23, 42, 0.3)"
-                        autoFocus={!biometricAvailable}
-                        secureTextEntry
-                        autoCapitalize="none"
-                        style={styles.input}
-                    />
+                    <TextInput value={key} onChangeText={setKey} placeholder="Enter your encryption PIN" placeholderTextColor={colors.placeholder} autoFocus={!biometricAvailable} secureTextEntry autoCapitalize="none" style={styles.input} />
                     <View style={styles.buttonRow}>
                         <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose} disabled={isSubmitting}>
                             <Text style={[styles.buttonLabel, styles.cancelLabel]}>Cancel</Text>
                         </Pressable>
-                        <Pressable
-                            style={[styles.button, styles.confirmButton, (!key.trim() || isSubmitting) && styles.disabledButton]}
-                            onPress={handleSubmit}
-                            disabled={!key.trim() || isSubmitting}
-                        >
+                        <Pressable style={[styles.button, styles.confirmButton, (!key.trim() || isSubmitting) && styles.disabledButton]} onPress={handleSubmit} disabled={!key.trim() || isSubmitting}>
                             <Text style={styles.buttonLabel}>{isSubmitting ? 'Saving…' : 'Continue'}</Text>
                         </Pressable>
                     </View>
@@ -100,82 +78,19 @@ export default function EncryptionKeyModal({
     );
 }
 
-const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.55)',
-        justifyContent: 'center',
-        padding: 24,
-    },
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: 24,
-        padding: 24,
-        gap: 16,
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 20,
-        elevation: 8,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#0f172a',
-    },
-    subtitle: {
-        fontSize: 14,
-        color: 'rgba(15, 23, 42, 0.6)',
-    },
-    biometricButton: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 16,
-        backgroundColor: `${Colors.light.tint}10`,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: `${Colors.light.tint}30`,
-    },
-    biometricLabel: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: Colors.light.tint,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: 'rgba(15, 23, 42, 0.1)',
-        borderRadius: 16,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        fontSize: 16,
-        color: '#0f172a',
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    button: {
-        flex: 1,
-        borderRadius: 14,
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cancelButton: {
-        backgroundColor: 'rgba(15, 23, 42, 0.05)',
-    },
-    confirmButton: {
-        backgroundColor: Colors.light.tint,
-    },
-    buttonLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    cancelLabel: {
-        color: '#0f172a',
-    },
-    disabledButton: {
-        opacity: 0.6,
-    },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: c.overlay, justifyContent: 'center', padding: 24 },
+    card: { backgroundColor: c.surfaceSolid, borderRadius: 24, padding: 24, gap: 16, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, elevation: 8, borderWidth: 1, borderColor: c.border },
+    title: { fontSize: 20, fontWeight: '700', color: c.text },
+    subtitle: { fontSize: 14, color: c.textSecondary },
+    biometricButton: { alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, backgroundColor: c.biometricBg, borderRadius: 16, borderWidth: 1, borderColor: c.biometricBorder },
+    biometricLabel: { fontSize: 13, fontWeight: '600', color: c.tint },
+    input: { borderWidth: 1, borderColor: c.inputBorder, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 16, fontSize: 16, color: c.text, backgroundColor: c.inputBg },
+    buttonRow: { flexDirection: 'row', gap: 12 },
+    button: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+    cancelButton: { backgroundColor: c.cancelBg },
+    confirmButton: { backgroundColor: c.tint },
+    buttonLabel: { fontSize: 16, fontWeight: '600', color: '#fff' },
+    cancelLabel: { color: c.cancelText },
+    disabledButton: { opacity: 0.6 },
 });

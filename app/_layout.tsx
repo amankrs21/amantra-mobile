@@ -9,6 +9,7 @@ import LoadingOverlay from '@/components/loading-overlay';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 export const unstable_settings = {
   initialRouteName: '(auth)',
@@ -16,17 +17,22 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  const navTheme = isDark
+    ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: Colors.dark.background } }
+    : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: Colors.light.background } };
 
   return (
     <SafeAreaProvider>
       <AuthProvider>
         <LoadingProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <ThemeProvider value={navTheme}>
             <Stack>
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             </Stack>
-            <StatusBar style="auto" />
+            <StatusBar style={isDark ? 'light' : 'dark'} />
           </ThemeProvider>
           <LoadingOverlay />
           <Toast />

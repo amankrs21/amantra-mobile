@@ -5,17 +5,16 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAuth } from '@/hooks/use-auth';
 import { useEncryptionKey } from '@/hooks/use-encryption-key';
 import { useBiometric } from '@/hooks/use-biometric';
 import { encodeKey } from '@/utils/crypto';
-import { api } from '@/services/api';
+import api from '@/services/api';
 import EncryptionKeyModal from '@/components/modals/EncryptionKeyModal';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const colors = useThemeColors();
   const { isAuthenticated, isHydrated, encryptionKeyConfigured, setEncryptionKeyConfigured } = useAuth();
   const { encodedKey, setKey, isHydrated: isKeyHydrated } = useEncryptionKey();
   const { isAvailable: bioAvailable, isEnabled: bioEnabled, authenticateAndGetKey, enableBiometric } = useBiometric();
@@ -67,7 +66,7 @@ export default function TabLayout() {
 
   if (!isHydrated) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator />
       </View>
     );
@@ -81,9 +80,15 @@ export default function TabLayout() {
     <>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          tabBarActiveTintColor: colors.tabIconSelected,
+          tabBarInactiveTintColor: colors.tabIconDefault,
           headerShown: false,
           tabBarButton: HapticTab,
+          tabBarStyle: {
+            backgroundColor: colors.tabBar,
+            borderTopColor: colors.tabBarBorder,
+            borderTopWidth: 1,
+          },
         }}>
         <Tabs.Screen
           name="home"
