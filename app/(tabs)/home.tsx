@@ -58,20 +58,28 @@ type WeatherCountry = {
 
 const TOOL_CARDS = [
     {
-        key: 'passwords',
-        title: 'Password Vault',
-        description: 'Generate, store, and decrypt credentials on demand.',
-        icon: 'key-variant',
+        key: 'vault',
+        title: 'Vault',
+        description: 'Passwords and encrypted notes in one place.',
+        icon: 'shield-lock',
         accent: ['#2563eb', '#1d4ed8'],
-        route: '/(tabs)/passwords',
+        route: '/(tabs)/vault',
     },
     {
-        key: 'notes',
-        title: 'Secure Notes',
-        description: 'Encrypt personal notes, journals, and ideas.',
-        icon: 'notebook-outline',
+        key: 'watchlist',
+        title: 'Watchlist',
+        description: 'Track movies, series, and shows you love.',
+        icon: 'movie-open',
         accent: ['#0ea5e9', '#22d3ee'],
-        route: '/(tabs)/notes',
+        route: '/(tabs)/watchlist',
+    },
+    {
+        key: 'newsletter',
+        title: 'Newsletter',
+        description: 'Curated tech, AI, and entertainment news.',
+        icon: 'newspaper-variant',
+        accent: ['#8b5cf6', '#6d28d9'],
+        route: '/(tabs)/newsletter',
     },
 ];
 
@@ -230,8 +238,8 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.toolHeadingRow}>
-                <Text style={styles.toolHeading}>Your Secure Tools</Text>
-                <Text style={styles.toolCaption}>Password vault and encrypted notes, all in one place.</Text>
+                <Text style={styles.toolHeading}>Quick Access</Text>
+                <Text style={styles.toolCaption}>Your tools and features at a glance.</Text>
             </View>
 
             <View style={styles.toolGrid}>

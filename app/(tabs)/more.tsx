@@ -3,6 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { useRouter } from 'expo-router';
 
 import EncryptionKeyModal from '@/components/modals/EncryptionKeyModal';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -29,6 +30,7 @@ export default function MoreScreen() {
     const { mode: themeMode, setMode: setThemeMode } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const [showEncryptionModal, setShowEncryptionModal] = useState(false);
+    const router = useRouter();
 
     const handleToggleBiometric = useCallback(async () => {
         if (bioEnabled) { await disableBiometric(); Toast.show({ type: 'success', text1: 'Biometric unlock disabled.' }); }
@@ -126,15 +128,21 @@ export default function MoreScreen() {
     return (
         <View style={[styles.screen, { paddingTop: insets.top }]}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <View style={styles.header}>
-                    <View style={{ flex: 1, gap: 6 }}>
-                        <Text style={styles.headerTitle}>More</Text>
-                        <Text style={styles.headerSubtitle}>Settings, security, and app information.</Text>
+                {/* Profile card — replaces dark header */}
+                <View style={styles.profileCard}>
+                    <View style={styles.avatarCircle}>
+                        <Text style={styles.avatarText}>{(user?.name ?? user?.email ?? 'U').charAt(0).toUpperCase()}</Text>
                     </View>
-                    <View style={styles.headerIcon}>
-                        <MaterialCommunityIcons name="cog-outline" size={32} color="#38bdf8" />
+                    <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={styles.profileName}>{user?.name ?? 'User'}</Text>
+                        <Text style={styles.profileEmail}>{user?.email ?? ''}</Text>
                     </View>
                 </View>
+
+                {renderSection('Profile', [
+                    { key: 'account', icon: 'account-edit', label: 'Edit Profile', subtitle: 'Update name, date of birth, and more', accent: '#2563eb', onPress: () => router.push('/(tabs)/account' as any) },
+                    { key: 'change-password', icon: 'lock-reset', label: 'Change Password', subtitle: 'Update your login password', accent: '#8b5cf6', onPress: () => router.push('/(tabs)/account' as any) },
+                ])}
 
                 {renderSection('Settings', settingsItems)}
                 {renderSection('Security', securityItems)}
@@ -155,10 +163,11 @@ export default function MoreScreen() {
 const createStyles = (c: ThemeColors) => StyleSheet.create({
     screen: { flex: 1, backgroundColor: c.background },
     content: { padding: 24, gap: 24, paddingBottom: 48 },
-    header: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.headerBg, padding: 20, borderRadius: 20, gap: 18 },
-    headerTitle: { fontSize: 22, fontWeight: '700', color: '#f8fafc' },
-    headerSubtitle: { fontSize: 14, color: 'rgba(226, 232, 240, 0.8)' },
-    headerIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(56, 189, 248, 0.2)', alignItems: 'center', justifyContent: 'center' },
+    profileCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, padding: 20, borderRadius: 24, gap: 16, shadowColor: c.cardShadow, shadowOpacity: 0.08, shadowRadius: 18, elevation: 4, borderWidth: 1, borderColor: c.border },
+    avatarCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' },
+    avatarText: { fontSize: 24, fontWeight: '700', color: '#ffffff' },
+    profileName: { fontSize: 20, fontWeight: '700', color: c.text },
+    profileEmail: { fontSize: 14, color: c.textSecondary },
     section: { gap: 10 },
     sectionTitle: { fontSize: 14, fontWeight: '700', color: c.sectionTitle, textTransform: 'uppercase', letterSpacing: 0.8, paddingLeft: 4 },
     card: { backgroundColor: c.surfaceSolid, borderRadius: 24, overflow: 'hidden', shadowColor: c.cardShadow, shadowOpacity: 0.06, shadowRadius: 18, elevation: 4, borderWidth: 1, borderColor: c.border },

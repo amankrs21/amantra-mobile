@@ -98,24 +98,24 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="passwords"
+          name="vault"
           options={{
-            title: 'Passwords',
-            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="key-variant" color={color} />,
+            title: 'Vault',
+            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="shield-lock" color={color} />,
           }}
         />
         <Tabs.Screen
-          name="notes"
+          name="watchlist"
           options={{
-            title: 'Notes',
-            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="note-text" color={color} />,
+            title: 'Watchlist',
+            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="movie-open" color={color} />,
           }}
         />
         <Tabs.Screen
-          name="account"
+          name="newsletter"
           options={{
-            title: 'Account',
-            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="account-circle" color={color} />,
+            title: 'Newsletter',
+            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="newspaper-variant" color={color} />,
           }}
         />
         <Tabs.Screen
@@ -125,6 +125,10 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="dots-horizontal" color={color} />,
           }}
         />
+        {/* Hidden tabs - still accessible but not in tab bar */}
+        <Tabs.Screen name="passwords" options={{ href: null }} />
+        <Tabs.Screen name="notes" options={{ href: null }} />
+        <Tabs.Screen name="account" options={{ href: null }} />
       </Tabs>
 
       <EncryptionKeyModal
