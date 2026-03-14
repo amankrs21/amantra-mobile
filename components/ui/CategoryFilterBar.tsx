@@ -1,6 +1,9 @@
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { ThemeColors } from '@/constants/theme';
 import { type CategoryDef } from '@/utils/categories';
 
 type CategoryFilterBarProps = {
@@ -10,6 +13,9 @@ type CategoryFilterBarProps = {
 };
 
 export default function CategoryFilterBar({ categories, selected, onSelect }: CategoryFilterBarProps) {
+    const colors = useThemeColors();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     return (
         <View style={styles.wrapper}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -17,7 +23,7 @@ export default function CategoryFilterBar({ categories, selected, onSelect }: Ca
                     style={[styles.chip, !selected && styles.chipActive]}
                     onPress={() => onSelect(null)}
                 >
-                    <MaterialCommunityIcons name="view-grid" size={14} color={!selected ? '#fff' : '#64748b'} />
+                    <MaterialCommunityIcons name="view-grid" size={14} color={!selected ? '#fff' : colors.textSecondary} />
                     <Text style={[styles.chipLabel, !selected && styles.chipLabelActive]}>All</Text>
                 </Pressable>
                 {categories.map((cat) => {
@@ -44,31 +50,15 @@ export default function CategoryFilterBar({ categories, selected, onSelect }: Ca
     );
 }
 
-const styles = StyleSheet.create({
-    wrapper: {
-        marginBottom: 12,
-    },
-    scroll: {
-        gap: 8,
-    },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+    wrapper: { marginBottom: 12 },
+    scroll: { gap: 8 },
     chip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-        paddingHorizontal: 12,
-        paddingVertical: 7,
-        borderRadius: 10,
-        backgroundColor: 'rgba(15, 23, 42, 0.06)',
+        flexDirection: 'row', alignItems: 'center', gap: 5,
+        paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
+        backgroundColor: c.chipBg,
     },
-    chipActive: {
-        backgroundColor: '#1e293b',
-    },
-    chipLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#475569',
-    },
-    chipLabelActive: {
-        color: '#fff',
-    },
+    chipActive: { backgroundColor: c.accent },
+    chipLabel: { fontSize: 12, fontWeight: '600', color: c.chipText },
+    chipLabelActive: { color: '#fff' },
 });

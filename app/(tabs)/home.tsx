@@ -271,7 +271,7 @@ function capitalizeWords(value: string) {
 const createStyles = (c: ThemeColors) =>
     StyleSheet.create({
         container: { flex: 1, backgroundColor: c.background },
-        content: { padding: 24, gap: 24, paddingBottom: 48 },
+        content: { padding: 20, gap: 20, paddingBottom: 48 },
         headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
         date: { fontSize: 18, color: c.textSecondary, fontWeight: '500' },
         time: { fontSize: 42, fontWeight: '700', color: c.text },
