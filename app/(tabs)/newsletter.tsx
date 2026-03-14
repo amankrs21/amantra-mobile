@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
-    Image,
     Linking,
     Pressable,
     RefreshControl,
@@ -20,35 +19,23 @@ import type { ThemeColors } from '@/constants/theme';
 import api from '@/services/api';
 
 type Article = {
-    _id?: string;
     title: string;
     description?: string;
     url: string;
     imageUrl?: string;
     source?: string;
-    category?: string;
+    tag?: string;
     publishedAt?: string;
+    relevance?: string;
 };
 
-const FILTER_TABS = [
-    { key: 'all', label: 'All', icon: '📰' },
-    { key: 'ai', label: 'AI', icon: '🤖' },
-    { key: 'quantum', label: 'Quantum', icon: '⚛️' },
-    { key: 'tech', label: 'Tech', icon: '💻' },
-    { key: 'entertainment', label: 'Entertainment', icon: '🎬' },
-    { key: 'watchlist', label: 'My Watchlist', icon: '🎯' },
+const TABS = [
+    { key: 'all', label: 'All', icon: 'newspaper-variant' },
+    { key: 'ai', label: 'AI', icon: 'robot' },
+    { key: 'quantum', label: 'Quantum', icon: 'atom' },
+    { key: 'tech', label: 'Tech', icon: 'laptop' },
+    { key: 'watchlist', label: 'My Watchlist', icon: 'bell-ring' },
 ];
-
-function timeAgo(dateStr?: string): string {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return `${days}d ago`;
-}
 
 export default function NewsletterScreen() {
     const insets = useSafeAreaInsets();
@@ -65,10 +52,15 @@ export default function NewsletterScreen() {
         try {
             const params = category !== 'all' ? `?category=${category}` : '';
             const { data } = await api.get(`/newsletter/feed${params}`);
-            setArticles(Array.isArray(data) ? data : []);
+            const list = data?.articles ?? (Array.isArray(data) ? data : []);
+            setArticles(list);
+            if (data?.message) {
+                Toast.show({ type: 'info', text1: data.message });
+            }
         } catch (error) {
             console.error('Newsletter fetch failed', error);
             if (!silent) Toast.show({ type: 'error', text1: 'Unable to load news.' });
+            setArticles([]);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -82,45 +74,45 @@ export default function NewsletterScreen() {
         void fetchArticles(activeTab, true);
     }, [activeTab, fetchArticles]);
 
-    const handleOpenArticle = useCallback(async (url: string) => {
+    const handleOpen = useCallback(async (url: string) => {
         try { await Linking.openURL(url); }
-        catch { Toast.show({ type: 'error', text1: 'Unable to open article.' }); }
+        catch { Toast.show({ type: 'error', text1: 'Unable to open link.' }); }
     }, []);
 
     const renderArticle = useCallback(({ item }: { item: Article }) => (
-        <Pressable style={styles.articleCard} onPress={() => handleOpenArticle(item.url)}>
-            {item.imageUrl ? (
-                <Image source={{ uri: item.imageUrl }} style={styles.articleImage} resizeMode="cover" />
-            ) : (
-                <View style={styles.articleImagePlaceholder}>
-                    <MaterialCommunityIcons name="newspaper-variant-outline" size={32} color={colors.textTertiary} />
+        <Pressable style={styles.card} onPress={() => handleOpen(item.url)}>
+            <View style={styles.cardContent}>
+                <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+                {item.description ? <Text style={styles.cardDesc} numberOfLines={3}>{item.description}</Text> : null}
+                <View style={styles.cardMeta}>
+                    {item.source ? <Text style={styles.sourceText}>{item.source}</Text> : null}
+                    {item.tag ? (
+                        <View style={styles.tagBadge}>
+                            <Text style={styles.tagText}>{item.tag}</Text>
+                        </View>
+                    ) : null}
+                    {item.relevance === 'high' ? (
+                        <View style={styles.hotBadge}>
+                            <MaterialCommunityIcons name="fire" size={12} color="#ef4444" />
+                            <Text style={styles.hotText}>Hot</Text>
+                        </View>
+                    ) : null}
                 </View>
-            )}
-            <View style={styles.articleContent}>
-                <Text style={styles.articleTitle} numberOfLines={2}>{item.title}</Text>
-                <View style={styles.articleMeta}>
-                    {item.source ? <Text style={styles.articleSource}>{item.source}</Text> : null}
-                    {item.publishedAt ? <Text style={styles.articleTime}>{timeAgo(item.publishedAt)}</Text> : null}
-                </View>
-                {item.description ? <Text style={styles.articleDescription} numberOfLines={2}>{item.description}</Text> : null}
-                {item.category ? (
-                    <View style={styles.tagBadge}>
-                        <Text style={styles.tagText}>{item.category}</Text>
-                    </View>
-                ) : null}
             </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
         </Pressable>
-    ), [colors, handleOpenArticle, styles]);
+    ), [colors, handleOpen, styles]);
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <Text style={styles.headerTitle}>Newsletter</Text>
-            <Text style={styles.headerSubtitle}>Curated tech, AI, and entertainment news.</Text>
+            <Text style={styles.headerSubtitle}>AI-curated news from the last 24 hours.</Text>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-                {FILTER_TABS.map((tab) => (
-                    <Pressable key={tab.key} style={[styles.filterChip, activeTab === tab.key && styles.filterChipActive]} onPress={() => setActiveTab(tab.key)}>
-                        <Text style={[styles.filterChipText, activeTab === tab.key && styles.filterChipTextActive]}>{tab.icon} {tab.label}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
+                {TABS.map((tab) => (
+                    <Pressable key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]} onPress={() => setActiveTab(tab.key)}>
+                        <MaterialCommunityIcons name={tab.icon as any} size={16} color={activeTab === tab.key ? '#fff' : colors.textSecondary} />
+                        <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
                     </Pressable>
                 ))}
             </ScrollView>
@@ -128,20 +120,20 @@ export default function NewsletterScreen() {
             {loading ? (
                 <View style={styles.loadingState}>
                     <ActivityIndicator size="large" color={colors.accent} />
-                    <Text style={styles.loadingText}>Fetching latest news...</Text>
+                    <Text style={styles.loadingText}>Fetching & curating news...</Text>
                 </View>
             ) : (
                 <FlatList
                     data={articles}
-                    keyExtractor={(item, index) => item._id ?? `${item.url}-${index}`}
-                    contentContainerStyle={articles.length === 0 ? styles.emptyList : { gap: 16, paddingBottom: 40 }}
+                    keyExtractor={(item, index) => `${item.url}-${index}`}
+                    contentContainerStyle={articles.length === 0 ? styles.emptyList : { gap: 12, paddingBottom: 40 }}
                     renderItem={renderArticle}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
                     ListEmptyComponent={() => (
                         <View style={styles.emptyState}>
                             <MaterialCommunityIcons name="newspaper-variant-outline" size={48} color={colors.textTertiary} />
                             <Text style={styles.emptyTitle}>No news to show</Text>
-                            <Text style={styles.emptySubtitle}>Pull to refresh or try a different category.</Text>
+                            <Text style={styles.emptySubtitle}>Pull to refresh or check back later.</Text>
                         </View>
                     )}
                     removeClippedSubviews={true}
@@ -154,29 +146,28 @@ export default function NewsletterScreen() {
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: c.background, padding: 24 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 4 },
-    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 16 },
-    filterRow: { gap: 8, paddingBottom: 16 },
-    filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: c.chipBg },
-    filterChipActive: { backgroundColor: c.accent },
-    filterChipText: { fontSize: 13, fontWeight: '600', color: c.chipText },
-    filterChipTextActive: { color: '#ffffff' },
-    articleCard: { backgroundColor: c.surfaceSolid, borderRadius: 20, overflow: 'hidden', shadowColor: c.cardShadow, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: c.border },
-    articleImage: { width: '100%', height: 160, backgroundColor: c.chipBg },
-    articleImagePlaceholder: { width: '100%', height: 100, backgroundColor: c.chipBg, alignItems: 'center', justifyContent: 'center' },
-    articleContent: { padding: 16, gap: 8 },
-    articleTitle: { fontSize: 17, fontWeight: '700', color: c.text, lineHeight: 22 },
-    articleMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    articleSource: { fontSize: 12, fontWeight: '600', color: c.accent },
-    articleTime: { fontSize: 12, color: c.textSecondary },
-    articleDescription: { fontSize: 14, color: c.textSecondary, lineHeight: 20 },
-    tagBadge: { backgroundColor: c.chipBg, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, alignSelf: 'flex-start' },
-    tagText: { fontSize: 11, fontWeight: '700', color: c.chipText, textTransform: 'uppercase' },
+    container: { flex: 1, backgroundColor: c.background, padding: 20 },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 2 },
+    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 14 },
+    tabRow: { gap: 8, paddingBottom: 14 },
+    tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border },
+    tabActive: { backgroundColor: c.accent, borderColor: c.accent },
+    tabText: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
+    tabTextActive: { color: '#ffffff' },
+    card: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, borderRadius: 16, padding: 16, gap: 12, borderWidth: 1, borderColor: c.border },
+    cardContent: { flex: 1, gap: 6 },
+    cardTitle: { fontSize: 16, fontWeight: '700', color: c.text, lineHeight: 21 },
+    cardDesc: { fontSize: 14, color: c.textSecondary, lineHeight: 19 },
+    cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+    sourceText: { fontSize: 12, fontWeight: '600', color: c.accent },
+    tagBadge: { backgroundColor: c.border, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+    tagText: { fontSize: 11, fontWeight: '700', color: c.textSecondary, textTransform: 'uppercase' },
+    hotBadge: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    hotText: { fontSize: 11, fontWeight: '700', color: '#ef4444' },
     loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     loadingText: { fontSize: 14, color: c.textSecondary },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     emptyState: { alignItems: 'center', gap: 8, paddingTop: 48 },
     emptyTitle: { fontSize: 18, fontWeight: '600', color: c.text },
-    emptySubtitle: { fontSize: 14, color: c.textSecondary, textAlign: 'center', paddingHorizontal: 32 },
+    emptySubtitle: { fontSize: 14, color: c.textSecondary, textAlign: 'center' },
 });
