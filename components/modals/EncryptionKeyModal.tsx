@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Modal,
     Pressable,
@@ -8,6 +8,7 @@ import {
     TextInput,
     View,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { Colors } from '@/constants/theme';
 
@@ -16,11 +17,29 @@ export type EncryptionKeyModalProps = {
     onClose: () => void;
     onConfirm: (key: string) => Promise<void> | void;
     caption?: string;
+    /** If provided, show a biometric button that calls this */
+    onBiometric?: () => Promise<void> | void;
+    /** Whether biometric is available and enabled */
+    biometricAvailable?: boolean;
 };
 
-export default function EncryptionKeyModal({ visible, onClose, onConfirm, caption }: EncryptionKeyModalProps) {
+export default function EncryptionKeyModal({
+    visible,
+    onClose,
+    onConfirm,
+    caption,
+    onBiometric,
+    biometricAvailable,
+}: EncryptionKeyModalProps) {
     const [key, setKey] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (visible && biometricAvailable && onBiometric) {
+            // Auto-trigger biometric on open
+            void onBiometric();
+        }
+    }, [visible]); // intentionally minimal deps — only trigger on visibility change
 
     const handleSubmit = async () => {
         if (!key.trim()) {
@@ -45,12 +64,20 @@ export default function EncryptionKeyModal({ visible, onClose, onConfirm, captio
                     <Text style={styles.subtitle}>
                         {caption ?? 'We store your PIN locally for 5 minutes to decrypt your data securely.'}
                     </Text>
+
+                    {biometricAvailable && onBiometric ? (
+                        <Pressable style={styles.biometricButton} onPress={onBiometric}>
+                            <MaterialCommunityIcons name="fingerprint" size={32} color={Colors.light.tint} />
+                            <Text style={styles.biometricLabel}>Tap to unlock with biometrics</Text>
+                        </Pressable>
+                    ) : null}
+
                     <TextInput
                         value={key}
                         onChangeText={setKey}
                         placeholder="Enter your encryption PIN"
                         placeholderTextColor="rgba(15, 23, 42, 0.3)"
-                        autoFocus
+                        autoFocus={!biometricAvailable}
                         secureTextEntry
                         style={styles.input}
                     />
@@ -97,6 +124,21 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 14,
         color: 'rgba(15, 23, 42, 0.6)',
+    },
+    biometricButton: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 16,
+        backgroundColor: `${Colors.light.tint}10`,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: `${Colors.light.tint}30`,
+    },
+    biometricLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: Colors.light.tint,
     },
     input: {
         borderWidth: 1,
