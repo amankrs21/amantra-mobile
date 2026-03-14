@@ -98,6 +98,13 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="newsletter"
+          options={{
+            title: 'News',
+            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="newspaper-variant" color={color} />,
+          }}
+        />
+        <Tabs.Screen
           name="vault"
           options={{
             title: 'Vault',
@@ -109,13 +116,6 @@ export default function TabLayout() {
           options={{
             title: 'Watchlist',
             tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="movie-open" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="newsletter"
-          options={{
-            title: 'Newsletter',
-            tabBarIcon: ({ color }) => <MaterialCommunityIcons size={26} name="newspaper-variant" color={color} />,
           }}
         />
         <Tabs.Screen

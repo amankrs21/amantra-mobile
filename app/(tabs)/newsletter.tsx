@@ -146,11 +146,11 @@ export default function NewsletterScreen() {
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: c.background, padding: 20 },
+    container: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20, paddingTop: 8 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 2 },
-    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 14 },
-    tabRow: { gap: 8, paddingBottom: 14 },
-    tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border },
+    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 10 },
+    tabRow: { gap: 8, paddingBottom: 10 },
+    tab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border },
     tabActive: { backgroundColor: c.accent, borderColor: c.accent },
     tabText: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
     tabTextActive: { color: '#ffffff' },

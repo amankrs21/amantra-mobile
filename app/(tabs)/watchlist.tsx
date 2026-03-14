@@ -242,11 +242,11 @@ export default function WatchlistScreen() {
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: c.background, padding: 20 },
+    container: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20, paddingTop: 8 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 2 },
-    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 14 },
-    filterRow: { gap: 8, paddingBottom: 12, alignItems: 'center' },
-    chip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border },
+    headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 10 },
+    filterRow: { gap: 8, paddingBottom: 8, alignItems: 'center' },
+    chip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: c.surfaceSolid, borderWidth: 1, borderColor: c.border },
     chipActive: { backgroundColor: c.accent, borderColor: c.accent },
     chipText: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
     chipTextActive: { color: '#ffffff' },

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import {
     Modal,
     Pressable,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Switch,
@@ -10,6 +9,7 @@ import {
     TextInput,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useThemeColors } from '@/hooks/use-theme-colors';
