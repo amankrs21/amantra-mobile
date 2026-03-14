@@ -8,11 +8,21 @@ import { z } from 'zod';
 import EncryptionKeyModal from '@/components/modals/EncryptionKeyModal';
 import VaultDeleteModal from '@/components/passwords/VaultDeleteModal';
 import VaultFormModal from '@/components/passwords/VaultFormModal';
+import CategoryBadge from '@/components/ui/CategoryBadge';
+import CategoryFilterBar from '@/components/ui/CategoryFilterBar';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
+import { useBiometric } from '@/hooks/use-biometric';
 import { useEncryptionKey } from '@/hooks/use-encryption-key';
 import { useLoading } from '@/hooks/use-loading';
 import api from '@/services/api';
+import {
+    type CategoryMapping,
+    getCategoryDef,
+    getCategoryMapping,
+    setCategoryForEntry,
+    VAULT_CATEGORIES,
+} from '@/utils/categories';
 import { decodeKey, encodeKey } from '@/utils/crypto';
 
 const VaultEntrySchema = z.object({
@@ -31,6 +41,7 @@ export default function PasswordsScreen() {
     const { encryptionKeyConfigured, setEncryptionKeyConfigured } = useAuth();
     const { encodedKey, setKey, clearKey, isHydrated: isKeyHydrated } = useEncryptionKey();
     const { showLoading, hideLoading } = useLoading();
+    const { isAvailable: bioAvailable, isEnabled: bioEnabled, authenticateAndGetKey, enableBiometric } = useBiometric();
 
     const [entries, setEntries] = useState<VaultEntry[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -40,14 +51,26 @@ export default function PasswordsScreen() {
     const [promptKey, setPromptKey] = useState(false);
     const [revealedPasswords, setRevealedPasswords] = useState<Record<string, string>>({});
     const hideTimers = useRef<Record<string, NodeJS.Timeout>>({});
+    const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+    const [categoryMap, setCategoryMap] = useState<CategoryMapping>({});
+    const [addCategory, setAddCategory] = useState<string | null>(null);
+
+    // Load categories
+    useEffect(() => {
+        void getCategoryMapping('vault').then(setCategoryMap);
+    }, []);
 
     const filteredEntries = useMemo(() => {
-        if (!searchTerm.trim()) {
-            return entries;
+        let result = entries;
+        if (searchTerm.trim()) {
+            const normalized = searchTerm.trim().toLowerCase();
+            result = result.filter((entry) => entry.title.toLowerCase().includes(normalized));
         }
-        const normalized = searchTerm.trim().toLowerCase();
-        return entries.filter((entry) => entry.title.toLowerCase().includes(normalized));
-    }, [entries, searchTerm]);
+        if (categoryFilter) {
+            result = result.filter((entry) => categoryMap[entry._id] === categoryFilter);
+        }
+        return result;
+    }, [entries, searchTerm, categoryFilter, categoryMap]);
 
     const fetchVault = useCallback(async () => {
         showLoading('Loading your vault...');
@@ -86,6 +109,16 @@ export default function PasswordsScreen() {
         };
     }, []);
 
+    const handleBiometricUnlock = useCallback(async () => {
+        const key = await authenticateAndGetKey();
+        if (key) {
+            await setKey(key);
+            await setEncryptionKeyConfigured(true);
+            Toast.show({ type: 'success', text1: 'Unlocked with biometrics.' });
+            setPromptKey(false);
+        }
+    }, [authenticateAndGetKey, setEncryptionKeyConfigured, setKey]);
+
     const handleKeySubmit = useCallback(
         async (value: string) => {
             const candidate = value.trim();
@@ -102,6 +135,14 @@ export default function PasswordsScreen() {
                 await setEncryptionKeyConfigured(true);
                 Toast.show({ type: 'success', text1: 'Encryption key saved for quick access.' });
                 setPromptKey(false);
+
+                // Offer biometric enrollment if available but not enabled
+                if (bioAvailable && !bioEnabled) {
+                    const enrolled = await enableBiometric(candidate);
+                    if (enrolled) {
+                        Toast.show({ type: 'success', text1: 'Biometric unlock enabled!' });
+                    }
+                }
             } catch (error) {
                 console.error('Key validation failed', error);
                 Toast.show({
@@ -113,7 +154,7 @@ export default function PasswordsScreen() {
                 hideLoading();
             }
         },
-        [hideLoading, setEncryptionKeyConfigured, setKey, showLoading],
+        [bioAvailable, bioEnabled, enableBiometric, hideLoading, setEncryptionKeyConfigured, setKey, showLoading],
     );
 
     const handleAdd = useCallback(
@@ -126,13 +167,20 @@ export default function PasswordsScreen() {
 
             showLoading('Saving password...');
             try {
-                await api.post('/vault/add', {
+                const { data } = await api.post('/vault/add', {
                     title,
                     username,
                     password,
                     key: encodedKey,
                 });
                 Toast.show({ type: 'success', text1: 'Password added successfully.' });
+
+                // Save category if selected
+                if (addCategory && data?._id) {
+                    await setCategoryForEntry('vault', data._id, addCategory);
+                    setCategoryMap((prev) => ({ ...prev, [data._id]: addCategory }));
+                }
+                setAddCategory(null);
                 await fetchVault();
             } catch (error) {
                 console.error('Add password failed', error);
@@ -145,7 +193,7 @@ export default function PasswordsScreen() {
                 hideLoading();
             }
         },
-        [encodedKey, fetchVault, hideLoading, showLoading],
+        [addCategory, encodedKey, fetchVault, hideLoading, showLoading],
     );
 
     const handleUpdate = useCallback(
@@ -265,8 +313,24 @@ export default function PasswordsScreen() {
         Toast.show({ type: 'success', text1: `${label} copied to clipboard.` });
     }, []);
 
+    const handleCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
+        await setCategoryForEntry('vault', entryId, categoryKey);
+        setCategoryMap((prev) => {
+            const next = { ...prev };
+            if (categoryKey) {
+                next[entryId] = categoryKey;
+            } else {
+                delete next[entryId];
+            }
+            return next;
+        });
+    }, []);
+
     const renderItem = ({ item }: { item: VaultEntry }) => {
         const revealed = revealedPasswords[item._id];
+        const catKey = categoryMap[item._id];
+        const catDef = catKey ? getCategoryDef('vault', catKey) : undefined;
+
         return (
             <View style={styles.itemCard}>
                 <View style={{ flex: 1, gap: 6 }}>
@@ -274,6 +338,7 @@ export default function PasswordsScreen() {
                     <Pressable onPress={() => handleCopy(item.username, 'Username')}>
                         <Text style={styles.itemSubtitle}>{item.username}</Text>
                     </Pressable>
+                    {catDef ? <CategoryBadge category={catDef} size="small" /> : null}
                     <Text style={styles.itemTimestamp}>{new Date(item.updatedAt).toLocaleString()}</Text>
                 </View>
                 <View style={styles.itemActions}>
@@ -330,6 +395,12 @@ export default function PasswordsScreen() {
                 </Pressable>
             </View>
 
+            <CategoryFilterBar
+                categories={VAULT_CATEGORIES}
+                selected={categoryFilter}
+                onSelect={setCategoryFilter}
+            />
+
             <FlatList
                 data={filteredEntries}
                 keyExtractor={(item) => item._id}
@@ -342,7 +413,15 @@ export default function PasswordsScreen() {
                 <MaterialCommunityIcons name="plus" size={26} color="#fff" />
             </Pressable>
 
-            <VaultFormModal visible={isAddVisible} mode="create" onClose={() => setAddVisible(false)} onSubmit={handleAdd} />
+            <VaultFormModal
+                visible={isAddVisible}
+                mode="create"
+                onClose={() => { setAddVisible(false); setAddCategory(null); }}
+                onSubmit={handleAdd}
+                categoryKey={addCategory}
+                onCategoryChange={setAddCategory}
+                categories={VAULT_CATEGORIES}
+            />
 
             {editEntry ? (
                 <VaultFormModal
@@ -351,6 +430,9 @@ export default function PasswordsScreen() {
                     initialValues={{ title: editEntry.title, username: editEntry.username, password: editEntry.password ?? '' }}
                     onClose={() => setEditEntry(null)}
                     onSubmit={handleUpdate}
+                    categoryKey={categoryMap[editEntry._id] ?? null}
+                    onCategoryChange={(key) => handleCategoryChange(editEntry._id, key)}
+                    categories={VAULT_CATEGORIES}
                 />
             ) : null}
 
@@ -368,6 +450,8 @@ export default function PasswordsScreen() {
                 onClose={() => setPromptKey(false)}
                 onConfirm={handleKeySubmit}
                 caption={encryptionKeyConfigured ? 'Re-enter your encryption PIN to continue.' : 'Set your encryption PIN to unlock passwords.'}
+                biometricAvailable={bioAvailable && bioEnabled}
+                onBiometric={handleBiometricUnlock}
             />
         </View>
     );
@@ -404,7 +488,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         gap: 10,
-        marginBottom: 16,
+        marginBottom: 12,
     },
     searchInput: {
         flex: 1,

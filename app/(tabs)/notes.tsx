@@ -17,11 +17,21 @@ import { z } from 'zod';
 import EncryptionKeyModal from '@/components/modals/EncryptionKeyModal';
 import NoteDeleteModal from '@/components/notes/NoteDeleteModal';
 import NoteFormModal from '@/components/notes/NoteFormModal';
+import CategoryBadge from '@/components/ui/CategoryBadge';
+import CategoryFilterBar from '@/components/ui/CategoryFilterBar';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
+import { useBiometric } from '@/hooks/use-biometric';
 import { useEncryptionKey } from '@/hooks/use-encryption-key';
 import { useLoading } from '@/hooks/use-loading';
 import api from '@/services/api';
+import {
+    type CategoryMapping,
+    getCategoryDef,
+    getCategoryMapping,
+    NOTES_CATEGORIES,
+    setCategoryForEntry,
+} from '@/utils/categories';
 import { decodeKey, encodeKey } from '@/utils/crypto';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -43,6 +53,7 @@ export default function NotesScreen() {
     const { encryptionKeyConfigured, setEncryptionKeyConfigured } = useAuth();
     const { encodedKey, setKey, isHydrated: isKeyHydrated } = useEncryptionKey();
     const { showLoading, hideLoading } = useLoading();
+    const { isAvailable: bioAvailable, isEnabled: bioEnabled, authenticateAndGetKey, enableBiometric } = useBiometric();
 
     const [notes, setNotes] = useState<Note[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -52,14 +63,25 @@ export default function NotesScreen() {
     const [deleteNote, setDeleteNote] = useState<Note | null>(null);
     const [promptKey, setPromptKey] = useState(false);
     const [activeContent, setActiveContent] = useState<Record<string, string>>({});
+    const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+    const [categoryMap, setCategoryMap] = useState<CategoryMapping>({});
+    const [addCategory, setAddCategory] = useState<string | null>(null);
+
+    useEffect(() => {
+        void getCategoryMapping('notes').then(setCategoryMap);
+    }, []);
 
     const filteredNotes = useMemo(() => {
-        if (!searchTerm.trim()) {
-            return notes;
+        let result = notes;
+        if (searchTerm.trim()) {
+            const normalized = searchTerm.trim().toLowerCase();
+            result = result.filter((note) => note.title.toLowerCase().includes(normalized));
         }
-        const normalized = searchTerm.trim().toLowerCase();
-        return notes.filter((note) => note.title.toLowerCase().includes(normalized));
-    }, [notes, searchTerm]);
+        if (categoryFilter) {
+            result = result.filter((note) => categoryMap[note._id] === categoryFilter);
+        }
+        return result;
+    }, [notes, searchTerm, categoryFilter, categoryMap]);
 
     const fetchNotes = useCallback(async () => {
         showLoading('Loading encrypted notes...');
@@ -82,6 +104,16 @@ export default function NotesScreen() {
         void fetchNotes();
     }, [fetchNotes]);
 
+    const handleBiometricUnlock = useCallback(async () => {
+        const key = await authenticateAndGetKey();
+        if (key) {
+            await setKey(key);
+            await setEncryptionKeyConfigured(true);
+            Toast.show({ type: 'success', text1: 'Unlocked with biometrics.' });
+            setPromptKey(false);
+        }
+    }, [authenticateAndGetKey, setEncryptionKeyConfigured, setKey]);
+
     const handleKeySubmit = useCallback(
         async (value: string) => {
             const candidate = value.trim();
@@ -96,6 +128,13 @@ export default function NotesScreen() {
                 await setEncryptionKeyConfigured(true);
                 Toast.show({ type: 'success', text1: 'Encryption key saved.' });
                 setPromptKey(false);
+
+                if (bioAvailable && !bioEnabled) {
+                    const enrolled = await enableBiometric(candidate);
+                    if (enrolled) {
+                        Toast.show({ type: 'success', text1: 'Biometric unlock enabled!' });
+                    }
+                }
             } catch (error) {
                 console.error('Key validation failed', error);
                 Toast.show({ type: 'error', text1: 'Invalid encryption key.' });
@@ -103,7 +142,7 @@ export default function NotesScreen() {
                 hideLoading();
             }
         },
-        [hideLoading, setEncryptionKeyConfigured, setKey, showLoading],
+        [bioAvailable, bioEnabled, enableBiometric, hideLoading, setEncryptionKeyConfigured, setKey, showLoading],
     );
 
     const decryptNote = useCallback(
@@ -156,12 +195,18 @@ export default function NotesScreen() {
 
             showLoading('Saving secure note...');
             try {
-                await api.post('/journal/add', {
+                const { data } = await api.post('/journal/add', {
                     title,
                     content,
                     key: encodedKey,
                 });
                 Toast.show({ type: 'success', text1: 'Note saved securely.' });
+
+                if (addCategory && data?._id) {
+                    await setCategoryForEntry('notes', data._id, addCategory);
+                    setCategoryMap((prev) => ({ ...prev, [data._id]: addCategory }));
+                }
+                setAddCategory(null);
                 await fetchNotes();
             } catch (error) {
                 console.error('Add note failed', error);
@@ -170,7 +215,7 @@ export default function NotesScreen() {
                 hideLoading();
             }
         },
-        [encodedKey, fetchNotes, hideLoading, showLoading],
+        [addCategory, encodedKey, fetchNotes, hideLoading, showLoading],
     );
 
     const handlePrepareEdit = useCallback(
@@ -245,14 +290,31 @@ export default function NotesScreen() {
         }
     }, [deleteNote, fetchNotes, hideLoading, showLoading]);
 
+    const handleCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
+        await setCategoryForEntry('notes', entryId, categoryKey);
+        setCategoryMap((prev) => {
+            const next = { ...prev };
+            if (categoryKey) {
+                next[entryId] = categoryKey;
+            } else {
+                delete next[entryId];
+            }
+            return next;
+        });
+    }, []);
+
     const renderItem = ({ item }: { item: Note }) => {
         const expanded = expandedId === item._id;
         const content = expanded ? activeContent[item._id] ?? 'Decrypting…' : undefined;
+        const catKey = categoryMap[item._id];
+        const catDef = catKey ? getCategoryDef('notes', catKey) : undefined;
+
         return (
             <View style={styles.noteCard}>
                 <Pressable style={styles.noteHeader} onPress={() => toggleExpand(item)}>
                     <View style={{ flex: 1, gap: 4 }}>
                         <Text style={styles.noteTitle}>{item.title}</Text>
+                        {catDef ? <CategoryBadge category={catDef} size="small" /> : null}
                         <Text style={styles.noteTimestamp}>Updated {new Date(item.updatedAt).toLocaleString()}</Text>
                     </View>
                     <MaterialCommunityIcons name={expanded ? 'chevron-up' : 'chevron-down'} size={24} color="#1e293b" />
@@ -298,6 +360,12 @@ export default function NotesScreen() {
                 </Pressable>
             </View>
 
+            <CategoryFilterBar
+                categories={NOTES_CATEGORIES}
+                selected={categoryFilter}
+                onSelect={setCategoryFilter}
+            />
+
             <FlatList
                 data={filteredNotes}
                 keyExtractor={(item) => item._id}
@@ -316,7 +384,15 @@ export default function NotesScreen() {
                 <MaterialCommunityIcons name="plus" size={26} color="#fff" />
             </Pressable>
 
-            <NoteFormModal visible={addVisible} mode="create" onClose={() => setAddVisible(false)} onSubmit={handleAdd} />
+            <NoteFormModal
+                visible={addVisible}
+                mode="create"
+                onClose={() => { setAddVisible(false); setAddCategory(null); }}
+                onSubmit={handleAdd}
+                categoryKey={addCategory}
+                onCategoryChange={setAddCategory}
+                categories={NOTES_CATEGORIES}
+            />
 
             {editNote ? (
                 <NoteFormModal
@@ -325,6 +401,9 @@ export default function NotesScreen() {
                     initialValues={{ title: editNote.title, content: editNote.content ?? '' }}
                     onClose={() => setEditNote(null)}
                     onSubmit={handleUpdate}
+                    categoryKey={categoryMap[editNote._id] ?? null}
+                    onCategoryChange={(key) => handleCategoryChange(editNote._id, key)}
+                    categories={NOTES_CATEGORIES}
                 />
             ) : null}
 
@@ -342,6 +421,8 @@ export default function NotesScreen() {
                 onClose={() => setPromptKey(false)}
                 onConfirm={handleKeySubmit}
                 caption={encryptionKeyConfigured ? 'Re-enter your encryption PIN to reveal notes.' : 'Set your encryption PIN to unlock notes.'}
+                biometricAvailable={bioAvailable && bioEnabled}
+                onBiometric={handleBiometricUnlock}
             />
         </View>
     );
@@ -379,7 +460,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         gap: 10,
-        marginBottom: 16,
+        marginBottom: 12,
     },
     searchInput: {
         flex: 1,

@@ -11,7 +11,9 @@ import {
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 
+import CategoryPicker from '@/components/ui/CategoryPicker';
 import { Colors } from '@/constants/theme';
+import { type CategoryDef } from '@/utils/categories';
 
 type NoteFormValues = {
     title: string;
@@ -24,6 +26,9 @@ type NoteFormModalProps = {
     initialValues?: Partial<NoteFormValues>;
     onClose: () => void;
     onSubmit: (values: NoteFormValues) => Promise<void> | void;
+    categoryKey?: string | null;
+    onCategoryChange?: (key: string | null) => void;
+    categories?: CategoryDef[];
 };
 
 const EMPTY_VALUES: NoteFormValues = {
@@ -31,7 +36,7 @@ const EMPTY_VALUES: NoteFormValues = {
     content: '',
 };
 
-export default function NoteFormModal({ visible, mode, initialValues, onClose, onSubmit }: NoteFormModalProps) {
+export default function NoteFormModal({ visible, mode, initialValues, onClose, onSubmit, categoryKey, onCategoryChange, categories }: NoteFormModalProps) {
     const [formValues, setFormValues] = useState<NoteFormValues>(EMPTY_VALUES);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -92,6 +97,16 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
                                 onChangeText={(text) => setFormValues((prev) => ({ ...prev, content: text }))}
                             />
                         </View>
+                        {categories && onCategoryChange ? (
+                            <View style={styles.field}>
+                                <Text style={styles.label}>Category</Text>
+                                <CategoryPicker
+                                    categories={categories}
+                                    selected={categoryKey ?? null}
+                                    onSelect={onCategoryChange}
+                                />
+                            </View>
+                        ) : null}
                     </ScrollView>
                     <View style={styles.buttonRow}>
                         <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose} disabled={isSubmitting}>
