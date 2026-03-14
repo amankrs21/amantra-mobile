@@ -84,8 +84,9 @@ export default function MoreScreen() {
             if (!candidate) return;
 
             try {
-                showLoading('Validating key...');
-                await api.post('/pin/verify', { key: encodeKey(candidate) });
+                showLoading('Setting up key...');
+                const endpoint = encryptionKeyConfigured ? '/pin/verify' : '/pin/setText';
+                await api.post(endpoint, { key: encodeKey(candidate) });
                 await setKey(candidate);
                 await setEncryptionKeyConfigured(true);
                 Toast.show({ type: 'success', text1: 'Encryption key configured.' });

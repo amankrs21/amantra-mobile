@@ -31,7 +31,7 @@ const VaultEntrySchema = z.object({
     title: z.string(),
     username: z.string(),
     updatedAt: z.string(),
-    createdAt: z.string(),
+    createdAt: z.string().optional(),
 });
 
 type VaultEntry = z.infer<typeof VaultEntrySchema> & { password?: string };
@@ -130,7 +130,8 @@ export default function PasswordsScreen() {
 
             try {
                 showLoading('Validating key...');
-                await api.post('/pin/verify', {
+                const endpoint = encryptionKeyConfigured ? '/pin/verify' : '/pin/setText';
+                await api.post(endpoint, {
                     key: encodeKey(candidate),
                 });
                 await setKey(candidate);

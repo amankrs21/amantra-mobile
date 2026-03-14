@@ -4,7 +4,7 @@ import { decodeKey, encodeKey } from '@/utils/crypto';
 import { getItemWithTTL, removeItem, setItemWithTTL } from '@/utils/storage';
 
 const STORAGE_KEY = 'securevault:ekey';
-const TTL_MS = 5 * 60 * 1000; // 5 minutes
+const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours (ask once per session)
 
 export function useEncryptionKey() {
     const [rawKey, setRawKey] = useState<string | null>(null);

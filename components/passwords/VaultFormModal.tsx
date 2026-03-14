@@ -362,8 +362,8 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     },
     eyeButton: {
-        height: '100%',
         paddingHorizontal: 16,
+        paddingVertical: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },

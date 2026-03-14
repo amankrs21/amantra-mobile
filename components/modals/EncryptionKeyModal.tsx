@@ -62,7 +62,7 @@ export default function EncryptionKeyModal({
                 <View style={styles.card}>
                     <Text style={styles.title}>Enter Encryption PIN</Text>
                     <Text style={styles.subtitle}>
-                        {caption ?? 'We store your PIN locally for 5 minutes to decrypt your data securely.'}
+                        {caption ?? 'Enter your encryption PIN to securely access your data.'}
                     </Text>
 
                     {biometricAvailable && onBiometric ? (

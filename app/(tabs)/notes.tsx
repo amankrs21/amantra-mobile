@@ -43,7 +43,7 @@ const NoteSchema = z.object({
     _id: z.string(),
     title: z.string(),
     updatedAt: z.string(),
-    createdAt: z.string(),
+    createdAt: z.string().optional(),
 });
 
 type Note = z.infer<typeof NoteSchema> & { content?: string };
@@ -125,7 +125,8 @@ export default function NotesScreen() {
 
             try {
                 showLoading('Validating key...');
-                await api.post('/pin/verify', { key: encodeKey(candidate) });
+                const endpoint = encryptionKeyConfigured ? '/pin/verify' : '/pin/setText';
+                await api.post(endpoint, { key: encodeKey(candidate) });
                 await setKey(candidate);
                 await setEncryptionKeyConfigured(true);
                 Toast.show({ type: 'success', text1: 'Encryption key saved.' });
