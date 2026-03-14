@@ -374,9 +374,11 @@ export default function VaultScreen() {
                     value={searchTerm}
                     onChangeText={setSearchTerm}
                 />
-                <Pressable style={styles.clearButton} onPress={() => setSearchTerm('')}>
-                    <MaterialCommunityIcons name="close" size={18} color={colors.textSecondary} />
-                </Pressable>
+                {searchTerm ? (
+                    <Pressable style={styles.clearButton} onPress={() => setSearchTerm('')}>
+                        <MaterialCommunityIcons name="close" size={18} color={colors.textSecondary} />
+                    </Pressable>
+                ) : null}
             </View>
 
             {/* Category filter */}

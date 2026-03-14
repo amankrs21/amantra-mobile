@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
     Modal,
     Pressable,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import Toast from 'react-native-toast-message';
@@ -70,20 +70,24 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
         <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
             <SafeAreaView style={styles.overlay}>
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-                <View style={styles.card}>
-                    <Text style={styles.title}>{mode === 'create' ? 'Add Password' : 'Update Password'}</Text>
-                    <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Title</Text>
+                <View style={styles.sheet}>
+                    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                        <View style={styles.handleBar} />
+                        <Text style={styles.sheetTitle}>{mode === 'create' ? 'Add Password' : 'Update Password'}</Text>
+
+                        <View style={styles.fieldGroup}>
+                            <Text style={styles.label}>Title *</Text>
                             <TextInput style={styles.input} placeholder="e.g. Github" placeholderTextColor={colors.placeholder} value={formValues.title} autoCapitalize="words" onChangeText={(v) => handleChange('title', v)} />
                         </View>
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Username / Email</Text>
+
+                        <View style={styles.fieldGroup}>
+                            <Text style={styles.label}>Username / Email *</Text>
                             <TextInput style={styles.input} placeholder="Enter username" placeholderTextColor={colors.placeholder} value={formValues.username} autoCapitalize="none" onChangeText={(v) => handleChange('username', v)} />
                         </View>
-                        <View style={styles.field}>
+
+                        <View style={styles.fieldGroup}>
                             <View style={styles.labelRow}>
-                                <Text style={styles.label}>Password</Text>
+                                <Text style={styles.label}>Password *</Text>
                                 <Pressable style={gStyles.toggleButton} onPress={() => setShowGenerator((prev) => !prev)}>
                                     <MaterialCommunityIcons name="auto-fix" size={16} color={colors.tint} />
                                     <Text style={gStyles.toggleLabel}>{showGenerator ? 'Hide Generator' : 'Generate'}</Text>
@@ -98,7 +102,7 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
                         </View>
 
                         {categories && onCategoryChange ? (
-                            <View style={styles.field}>
+                            <View style={styles.fieldGroup}>
                                 <Text style={styles.label}>Category</Text>
                                 <CategoryPicker categories={categories} selected={categoryKey ?? null} onSelect={onCategoryChange} />
                             </View>
@@ -148,15 +152,16 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
                                 ) : null}
                             </View>
                         ) : null}
+
+                        <View style={styles.buttonRow}>
+                            <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose} disabled={isSubmitting}>
+                                <Text style={[styles.buttonLabel, styles.cancelLabel]}>Cancel</Text>
+                            </Pressable>
+                            <Pressable style={[styles.button, styles.submitButton, isSubmitting && { opacity: 0.6 }]} onPress={handleSubmit} disabled={isSubmitting}>
+                                <Text style={styles.buttonLabel}>{isSubmitting ? 'Saving…' : mode === 'create' ? 'Add Password' : 'Save Changes'}</Text>
+                            </Pressable>
+                        </View>
                     </ScrollView>
-                    <View style={styles.buttonRow}>
-                        <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose} disabled={isSubmitting}>
-                            <Text style={[styles.buttonLabel, styles.cancelLabel]}>Cancel</Text>
-                        </Pressable>
-                        <Pressable style={[styles.button, styles.submitButton, isSubmitting && styles.disabledButton]} onPress={handleSubmit} disabled={isSubmitting}>
-                            <Text style={styles.buttonLabel}>{isSubmitting ? 'Saving…' : mode === 'create' ? 'Add Password' : 'Save Changes'}</Text>
-                        </Pressable>
-                    </View>
                 </View>
             </SafeAreaView>
         </Modal>
@@ -164,30 +169,29 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: c.overlay, justifyContent: 'center', padding: 24 },
-    card: { backgroundColor: c.surfaceSolid, borderRadius: 24, padding: 24, maxHeight: '90%', gap: 16, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 20, elevation: 10, borderWidth: 1, borderColor: c.border },
-    title: { fontSize: 20, fontWeight: '700', color: c.text },
-    form: { gap: 16 },
-    field: { gap: 8 },
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: c.surfaceSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%', borderWidth: 1, borderColor: c.border },
+    handleBar: { width: 40, height: 4, borderRadius: 2, backgroundColor: c.textTertiary, alignSelf: 'center', marginBottom: 16 },
+    sheetTitle: { fontSize: 22, fontWeight: '700', color: c.text, marginBottom: 20 },
+    fieldGroup: { gap: 6, marginBottom: 16 },
     label: { fontSize: 14, fontWeight: '600', color: c.textSecondary },
     labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    input: { borderWidth: 1, borderColor: c.inputBorder, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: c.text, backgroundColor: c.inputBg },
-    passwordRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, borderColor: c.inputBorder, backgroundColor: c.inputBg },
+    input: { borderRadius: 14, borderWidth: 1, borderColor: c.inputBorder, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: c.text, backgroundColor: c.inputBg },
+    passwordRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1, borderColor: c.inputBorder, backgroundColor: c.inputBg },
     passwordInput: { flex: 1, borderWidth: 0, borderRadius: 0, paddingVertical: 12 },
     eyeButton: { paddingHorizontal: 16, paddingVertical: 12, justifyContent: 'center', alignItems: 'center' },
-    buttonRow: { flexDirection: 'row', gap: 12 },
-    button: { flex: 1, borderRadius: 16, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
-    cancelButton: { backgroundColor: c.cancelBg },
-    submitButton: { backgroundColor: c.tint },
-    disabledButton: { opacity: 0.6 },
+    buttonRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
+    button: { flex: 1, borderRadius: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+    cancelButton: { backgroundColor: c.border },
+    submitButton: { backgroundColor: c.accent },
     buttonLabel: { fontSize: 16, fontWeight: '600', color: '#fff' },
-    cancelLabel: { color: c.cancelText },
+    cancelLabel: { color: c.text },
 });
 
 const createGenStyles = (c: ThemeColors) => StyleSheet.create({
     toggleButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     toggleLabel: { fontSize: 13, fontWeight: '600', color: c.tint },
-    container: { backgroundColor: c.generatorBg, borderRadius: 16, padding: 16, gap: 14 },
+    container: { backgroundColor: c.generatorBg, borderRadius: 16, padding: 16, gap: 14, marginBottom: 16 },
     sectionLabel: { fontSize: 14, fontWeight: '700', color: c.text },
     lengthRow: { gap: 8 },
     lengthLabel: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
