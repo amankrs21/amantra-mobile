@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -112,6 +114,11 @@ export default function WatchlistFormModal({ visible, onClose, onSubmit, mode = 
         <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
             <SafeAreaView style={styles.overlay}>
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                <KeyboardAvoidingView
+                    style={{ flex: 1, justifyContent: 'flex-end' }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={0}
+                >
                 <View style={styles.sheet}>
                     <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                         <View style={styles.handleBar} />
@@ -209,6 +216,7 @@ export default function WatchlistFormModal({ visible, onClose, onSubmit, mode = 
                         </View>
                     </ScrollView>
                 </View>
+                </KeyboardAvoidingView>
             </SafeAreaView>
         </Modal>
     );
