@@ -61,3 +61,30 @@ jobs:
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
           EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
           EXPO_PUBLIC_WEATHER_API_KEY: ${{ secrets.EXPO_PUBLIC_WEATHER_API_KEY }}
+
+      - name: Get APK URL from EAS
+        id: apk_url
+        run: |
+          APK_URL=$(eas build:list --platform android --status finished --limit 1 --json --non-interactive | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['artifacts']['buildUrl'])")
+          echo "url=$APK_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Download APK
+        run: curl -L -o amantra.apk "${{ steps.apk_url.outputs.url }}"
+
+      - name: Get version
+        id: version
+        run: echo "version=$(python3 -c \"import json; print(json.load(open('app.json'))['expo']['version'])\")" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}-build.${{ github.run_number }}
+          name: Amantra v${{ steps.version.outputs.version }} (Build ${{ github.run_number }})
+          body: |
+            🚀 **Amantra** Android build from merge to `main`.
+
+            **Commit:** ${{ github.sha }}
+            **Built by:** EAS Build + GitHub Actions
+          files: amantra.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
