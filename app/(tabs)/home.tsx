@@ -10,10 +10,11 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 import { useRouter } from 'expo-router';
 import { z } from 'zod';
 
+import { useAuth } from '@/hooks/use-auth';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { ThemeColors } from '@/constants/theme';
 
@@ -44,21 +45,30 @@ export default function HomeScreen() {
     const insets = useSafeAreaInsets();
     const colors = useThemeColors();
     const styles = useMemo(() => createStyles(colors), [colors]);
+    const { user } = useAuth();
 
     const [now, setNow] = useState(() => new Date());
-    const [city, setCity] = useState('New York');
+    const [city, setCity] = useState('');
     const [weather, setWeather] = useState<WeatherPayload | null>(null);
     const [isFetching, setIsFetching] = useState(false);
     const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
 
     useEffect(() => { const t = setInterval(() => setNow(new Date()), 10000); return () => clearInterval(t); }, []);
-    useEffect(() => { if (!lastFetchedAt || Date.now() - lastFetchedAt > WEATHER_TTL_MS) void handleSearch('New York', true); }, []); // eslint-disable-line
+
+    // Set city and fetch weather once user is available
+    useEffect(() => {
+        const userCity = user?.weatherCity || 'New York';
+        setCity(userCity);
+        if (!lastFetchedAt || Date.now() - lastFetchedAt > WEATHER_TTL_MS) {
+            void handleSearch(userCity, true);
+        }
+    }, [user?.weatherCity]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const timeLabel = useMemo(() => now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), [now]);
     const dateLabel = useMemo(() => now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }), [now]);
 
     const handleSearch = useCallback(async (inputCity?: string, silent?: boolean) => {
-        if (!WEATHER_API_KEY) { if (!silent) Toast.show({ type: 'info', text1: 'Weather unavailable.' }); return; }
+        if (!WEATHER_API_KEY) { if (!silent) toast.info('Weather unavailable.'); return; }
         const query = (inputCity ?? city).trim();
         if (!query) return;
         setIsFetching(true);
@@ -69,7 +79,7 @@ export default function HomeScreen() {
             setWeather(parsed); setLastFetchedAt(Date.now());
         } catch (e) {
             setWeather(null);
-            Toast.show({ type: 'error', text1: 'Unable to fetch weather', text2: e instanceof Error ? e.message : 'Try again.' });
+            toast.error('Unable to fetch weather', { description: e instanceof Error ? e.message : 'Try again.' });
         } finally { setIsFetching(false); Keyboard.dismiss(); }
     }, [city]);
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -10,18 +11,12 @@ import type { ThemeColors } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useLoading } from '@/hooks/use-loading';
 import api from '@/services/api';
-import { decodeKey, encodeKey } from '@/utils/crypto';
 
-type ProfileResponse = { _id: string; email: string; name: string; dateOfBirth?: string | null; secretAnswer?: string | null };
-type ProfileFormState = { email: string; name: string; dateOfBirth: string; secretAnswer: string };
+type ProfileResponse = { id: string; email: string; name: string; dateOfBirth?: string | null; weatherCity?: string | null; avatarUrl?: string | null };
+type ProfileFormState = { email: string; name: string; dateOfBirth: string; weatherCity: string; avatarUrl: string };
 type PasswordFormState = { oldPassword: string; newPassword: string; confirmPassword: string };
 
-function safeDecode(value?: string | null) {
-    if (!value) return '';
-    try { return decodeKey(value); } catch { return value; }
-}
-
-const defaultProfile: ProfileFormState = { email: '', name: '', dateOfBirth: '', secretAnswer: '' };
+const defaultProfile: ProfileFormState = { email: '', name: '', dateOfBirth: '', weatherCity: '', avatarUrl: '' };
 const defaultPasswords: PasswordFormState = { oldPassword: '', newPassword: '', confirmPassword: '' };
 
 export default function AccountScreen() {
@@ -37,7 +32,6 @@ export default function AccountScreen() {
     const userEmail = user?.email ?? '';
     const userId = user?.id ?? null;
 
-    const [profileId, setProfileId] = useState<string | null>(null);
     const [profile, setProfile] = useState<ProfileFormState>(defaultProfile);
     const [initialProfile, setInitialProfile] = useState<ProfileFormState | null>(null);
     const [isProfileSubmitting, setProfileSubmitting] = useState(false);
@@ -47,37 +41,36 @@ export default function AccountScreen() {
 
     // Deactivation state
     const [deactivateEmail, setDeactivateEmail] = useState('');
-    const [deactivateConfirmed, setDeactivateConfirmed] = useState(false);
 
     const fetchProfile = useCallback(async () => {
         if (section !== 'profile') return;
         showLoading('Loading profile...');
         try {
             const { data } = await api.get<ProfileResponse>('/user/fetch');
-            const nextProfile: ProfileFormState = { email: data.email ?? userEmail, name: data.name ?? '', dateOfBirth: data.dateOfBirth ?? '', secretAnswer: safeDecode(data.secretAnswer) };
-            setProfile(nextProfile); setInitialProfile(nextProfile); setProfileId(data._id ?? userId);
-        } catch { Toast.show({ type: 'error', text1: 'Unable to load profile.' }); }
+            const nextProfile: ProfileFormState = { email: data.email ?? userEmail, name: data.name ?? '', dateOfBirth: data.dateOfBirth ?? '', weatherCity: data.weatherCity ?? '', avatarUrl: data.avatarUrl ?? '' };
+            setProfile(nextProfile); setInitialProfile(nextProfile);
+        } catch { toast.error('Unable to load profile.'); }
         finally { hideLoading(); }
-    }, [hideLoading, showLoading, userEmail, userId, section]);
+    }, [hideLoading, showLoading, userEmail, section]);
 
     useEffect(() => { void fetchProfile(); }, [fetchProfile]);
 
     // Profile handlers
     const handleProfileChange = useCallback((field: keyof ProfileFormState, value: string) => { setProfile((prev) => ({ ...prev, [field]: value })); }, []);
-    const isProfileDirty = useMemo(() => { if (!initialProfile) return false; return initialProfile.name !== profile.name || initialProfile.dateOfBirth !== profile.dateOfBirth || initialProfile.secretAnswer !== profile.secretAnswer; }, [initialProfile, profile]);
-    const isProfileValid = useMemo(() => profile.name.trim().length > 0 && profile.dateOfBirth.trim().length > 0 && profile.secretAnswer.trim().length >= 3, [profile]);
+    const isProfileDirty = useMemo(() => { if (!initialProfile) return false; return initialProfile.name !== profile.name || initialProfile.dateOfBirth !== profile.dateOfBirth || initialProfile.weatherCity !== profile.weatherCity; }, [initialProfile, profile]);
+    const isProfileValid = useMemo(() => profile.name.trim().length > 0, [profile]);
 
     const handleProfileSubmit = useCallback(async () => {
-        if (!profileId || !isProfileValid) return;
+        if (!isProfileValid) return;
         setProfileSubmitting(true); showLoading('Updating profile...');
         try {
-            await api.patch('/user/update', { id: profileId, name: profile.name.trim(), dateOfBirth: profile.dateOfBirth.trim(), secretAnswer: encodeKey(profile.secretAnswer.trim()) });
-            Toast.show({ type: 'success', text1: 'Profile updated.' });
-            const cleaned = { email: profile.email, name: profile.name.trim(), dateOfBirth: profile.dateOfBirth.trim(), secretAnswer: profile.secretAnswer.trim() };
+            await api.patch('/user/update', { name: profile.name.trim(), dateOfBirth: profile.dateOfBirth.trim() || undefined, weatherCity: profile.weatherCity.trim() || undefined });
+            toast.success('Profile updated.');
+            const cleaned = { email: profile.email, name: profile.name.trim(), dateOfBirth: profile.dateOfBirth.trim(), weatherCity: profile.weatherCity.trim(), avatarUrl: profile.avatarUrl };
             setProfile(cleaned); setInitialProfile(cleaned); await refreshUser();
-        } catch (e: any) { Toast.show({ type: 'error', text1: e?.response?.data?.message ?? 'Unable to update.' }); }
+        } catch (e: any) { toast.error(e?.response?.data?.message ?? 'Unable to update.'); }
         finally { setProfileSubmitting(false); hideLoading(); }
-    }, [hideLoading, isProfileValid, profile, profileId, refreshUser, showLoading]);
+    }, [hideLoading, isProfileValid, profile, refreshUser, showLoading]);
 
     // Password handlers
     const handlePasswordChange = useCallback((field: keyof PasswordFormState, value: string) => { setPasswords((prev) => ({ ...prev, [field]: value })); }, []);
@@ -85,11 +78,11 @@ export default function AccountScreen() {
     const isPasswordValid = useMemo(() => passwords.oldPassword.trim().length > 0 && passwords.newPassword.trim().length >= 8 && passwords.confirmPassword.trim().length >= 8, [passwords]);
 
     const handlePasswordSubmit = useCallback(async () => {
-        if (!isPasswordValid) { Toast.show({ type: 'info', text1: 'Enter all fields (min 8 chars).' }); return; }
-        if (passwords.newPassword !== passwords.confirmPassword) { Toast.show({ type: 'error', text1: 'Passwords do not match.' }); return; }
+        if (!isPasswordValid) { toast.info('Enter all fields (min 8 chars).'); return; }
+        if (passwords.newPassword !== passwords.confirmPassword) { toast.error('Passwords do not match.'); return; }
         setPasswordSubmitting(true); showLoading('Updating password...');
-        try { await api.patch('/user/changePassword', { oldPassword: passwords.oldPassword, newPassword: passwords.newPassword }); Toast.show({ type: 'success', text1: 'Password updated.' }); setPasswords(defaultPasswords); }
-        catch (e: any) { Toast.show({ type: 'error', text1: e?.response?.data?.message ?? 'Unable to update password.' }); }
+        try { await api.patch('/user/changePassword', { oldPassword: passwords.oldPassword, newPassword: passwords.newPassword }); toast.success('Password updated.'); setPasswords(defaultPasswords); }
+        catch (e: any) { toast.error(e?.response?.data?.message ?? 'Unable to update password.'); }
         finally { setPasswordSubmitting(false); hideLoading(); }
     }, [hideLoading, isPasswordValid, passwords, showLoading]);
 
@@ -98,7 +91,7 @@ export default function AccountScreen() {
     // Deactivation
     const handleDeactivate = useCallback(async () => {
         if (deactivateEmail.trim().toLowerCase() !== userEmail.toLowerCase()) {
-            Toast.show({ type: 'error', text1: 'Email does not match your account.' });
+            toast.error('Email does not match your account.');
             return;
         }
         Alert.alert(
@@ -110,8 +103,8 @@ export default function AccountScreen() {
                     text: 'Delete Everything', style: 'destructive',
                     onPress: async () => {
                         showLoading('Deleting account...');
-                        try { await api.delete('/user/delete'); Toast.show({ type: 'success', text1: 'Account deleted.' }); await signOut(); }
-                        catch { Toast.show({ type: 'error', text1: 'Unable to delete account.' }); }
+                        try { await api.delete('/user/deactivate'); toast.success('Account deleted.'); await signOut(); }
+                        catch { toast.error('Unable to delete account.'); }
                         finally { hideLoading(); }
                     },
                 },
@@ -120,10 +113,11 @@ export default function AccountScreen() {
     }, [deactivateEmail, hideLoading, showLoading, signOut, userEmail]);
 
     return (
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <View style={[styles.screen, { paddingTop: insets.top }]}>
             {/* Back button + title */}
             <View style={styles.topBar}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
+                <Pressable onPress={() => router.replace('/(tabs)/more' as any)} style={styles.backButton}>
                     <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />
                 </Pressable>
                 <Text style={styles.topTitle}>
@@ -132,9 +126,20 @@ export default function AccountScreen() {
                 <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {section === 'profile' && (
                     <View style={styles.card}>
+                        {/* Avatar */}
+                        <View style={styles.avatarContainer}>
+                            <View style={styles.avatarCircle}>
+                                {profile.avatarUrl ? (
+                                    <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} contentFit="cover" />
+                                ) : (
+                                    <Text style={styles.avatarLetter}>{(profile.name || profile.email || 'U').charAt(0).toUpperCase()}</Text>
+                                )}
+                            </View>
+                        </View>
+
                         <Text style={styles.cardTitle}>Profile Details</Text>
                         <Text style={styles.cardSubtitle}>Keep your personal information up to date.</Text>
 
@@ -149,12 +154,12 @@ export default function AccountScreen() {
                             <TextInput value={profile.name} onChangeText={(v) => handleProfileChange('name', v)} placeholder="Your full name" placeholderTextColor={colors.placeholder} style={styles.input} autoCapitalize="words" />
                         </View>
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>Date of birth</Text>
-                            <TextInput value={profile.dateOfBirth} onChangeText={(v) => handleProfileChange('dateOfBirth', v)} placeholder="YYYY-MM-DD" placeholderTextColor={colors.placeholder} style={styles.input} />
+                            <Text style={styles.label}>Date of birth <Text style={{ fontWeight: '400', color: colors.textTertiary }}>(optional)</Text></Text>
+                            <TextInput value={profile.dateOfBirth} onChangeText={(v) => handleProfileChange('dateOfBirth', v)} placeholder="DD-MM-YYYY" placeholderTextColor={colors.placeholder} style={styles.input} />
                         </View>
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>Favorite place (recovery)</Text>
-                            <TextInput value={profile.secretAnswer} onChangeText={(v) => handleProfileChange('secretAnswer', v)} placeholder="Used to recover your vault" placeholderTextColor={colors.placeholder} style={styles.input} autoCapitalize="none" />
+                            <Text style={styles.label}>Default weather city</Text>
+                            <TextInput value={profile.weatherCity} onChangeText={(v) => handleProfileChange('weatherCity', v)} placeholder="e.g., Hyderabad" placeholderTextColor={colors.placeholder} style={styles.input} autoCapitalize="words" />
                         </View>
                         <Pressable style={[styles.primaryButton, (!isProfileDirty || !isProfileValid || isProfileSubmitting) && styles.disabledButton]} onPress={handleProfileSubmit} disabled={!isProfileDirty || !isProfileValid || isProfileSubmitting}>
                             <Text style={styles.primaryButtonLabel}>{isProfileSubmitting ? 'Saving…' : 'Update Profile'}</Text>
@@ -230,6 +235,7 @@ export default function AccountScreen() {
                 )}
             </ScrollView>
         </View>
+        </KeyboardAvoidingView>
     );
 }
 
@@ -240,6 +246,10 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     topTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: c.text, textAlign: 'center' },
     content: { padding: 20, gap: 20, paddingBottom: 48 },
     card: { backgroundColor: c.surfaceSolid, borderRadius: 20, padding: 20, gap: 16, borderWidth: 1, borderColor: c.border },
+    avatarContainer: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+    avatarCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    avatarImage: { width: 88, height: 88, borderRadius: 44 },
+    avatarLetter: { fontSize: 36, fontWeight: '700', color: '#ffffff' },
     cardTitle: { fontSize: 20, fontWeight: '700', color: c.text },
     cardSubtitle: { fontSize: 13, color: c.textSecondary, marginTop: -8 },
     fieldGroup: { gap: 6 },

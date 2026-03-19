@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 import { useRouter } from 'expo-router';
 
 import EncryptionKeyModal from '@/components/modals/EncryptionKeyModal';
@@ -30,20 +31,64 @@ export default function MoreScreen() {
     const { mode: themeMode, setMode: setThemeMode } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const [showEncryptionModal, setShowEncryptionModal] = useState(false);
+    const [showBiometricPinModal, setShowBiometricPinModal] = useState(false);
     const router = useRouter();
 
+    const avatarUrl = user?.avatarUrl ?? null;
+
     const handleToggleBiometric = useCallback(async () => {
-        if (bioEnabled) { await disableBiometric(); Toast.show({ type: 'success', text1: 'Biometric unlock disabled.' }); }
-        else Toast.show({ type: 'info', text1: 'Enter your encryption PIN in the vault to enable biometric unlock.', text2: 'Biometric enrollment happens after a successful PIN entry.' });
+        if (bioEnabled) {
+            Alert.alert(
+                'Disable Biometric Unlock',
+                'Are you sure you want to disable biometric unlock? You will need to enter your PIN manually.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Disable',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await disableBiometric();
+                            toast.success('Biometric unlock disabled.');
+                        },
+                    },
+                ],
+            );
+        } else {
+            // Show encryption PIN modal to enable biometric
+            setShowBiometricPinModal(true);
+        }
     }, [bioEnabled, disableBiometric]);
+
+    const handleBiometricPinSubmit = useCallback(async (value: string) => {
+        const candidate = value.trim();
+        if (!candidate) return;
+        try {
+            showLoading('Verifying PIN...');
+            const endpoint = encryptionKeyConfigured ? '/pin/verify' : '/pin/setText';
+            await api.post(endpoint, { key: encodeKey(candidate) });
+            await setKey(candidate);
+            await setEncryptionKeyConfigured(true);
+            const enrolled = await enableBiometric(candidate);
+            if (enrolled) {
+                toast.success('Biometric unlock enabled!');
+            } else {
+                toast.error('Biometric enrollment failed. Please try again.');
+            }
+            setShowBiometricPinModal(false);
+        } catch {
+            toast.error('Invalid encryption PIN.');
+        } finally {
+            hideLoading();
+        }
+    }, [enableBiometric, encryptionKeyConfigured, hideLoading, setEncryptionKeyConfigured, setKey, showLoading]);
 
     const handleResetEncryptionKey = useCallback(() => {
         Alert.alert('Reset Encryption Key', 'This will permanently delete ALL your encrypted passwords and notes. This action cannot be undone.\n\nAre you sure?', [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Reset', style: 'destructive', onPress: async () => {
                 showLoading('Resetting encryption key...');
-                try { await api.get('/pin/reset'); await clearKey(); await setEncryptionKeyConfigured(false); Toast.show({ type: 'success', text1: 'Encryption key reset.', text2: 'Set a new key when you next access your vault.' }); }
-                catch (error) { console.error('Failed to reset encryption key', error); Toast.show({ type: 'error', text1: 'Unable to reset encryption key.' }); }
+                try { await api.get('/pin/reset'); await clearKey(); await setEncryptionKeyConfigured(false); toast.success('Encryption key reset.', { description: 'Set a new key when you next access your vault.' }); }
+                catch (error) { console.error('Failed to reset encryption key', error); toast.error('Unable to reset encryption key.'); }
                 finally { hideLoading(); }
             }},
         ]);
@@ -51,7 +96,7 @@ export default function MoreScreen() {
 
     const handleClearLocalKey = useCallback(async () => {
         await clearKey();
-        Toast.show({ type: 'success', text1: 'Local encryption key cleared.', text2: 'You\'ll be prompted to re-enter it next time.' });
+        toast.success('Local encryption key cleared.', { description: 'You\'ll be prompted to re-enter it next time.' });
     }, [clearKey]);
 
     const handleSetupEncryptionKey = useCallback(async (value: string) => {
@@ -61,15 +106,15 @@ export default function MoreScreen() {
             const endpoint = encryptionKeyConfigured ? '/pin/verify' : '/pin/setText';
             await api.post(endpoint, { key: encodeKey(candidate) });
             await setKey(candidate); await setEncryptionKeyConfigured(true);
-            Toast.show({ type: 'success', text1: 'Encryption key configured.' }); setShowEncryptionModal(false);
-            if (bioAvailable && !bioEnabled) { const enrolled = await enableBiometric(candidate); if (enrolled) Toast.show({ type: 'success', text1: 'Biometric unlock enabled!' }); }
-        } catch (error) { console.error('Key setup failed', error); Toast.show({ type: 'error', text1: 'Invalid encryption key.' }); }
+            toast.success('Encryption key configured.'); setShowEncryptionModal(false);
+            if (bioAvailable && !bioEnabled) { const enrolled = await enableBiometric(candidate); if (enrolled) toast.success('Biometric unlock enabled!'); }
+        } catch (error) { console.error('Key setup failed', error); toast.error('Invalid encryption key.'); }
         finally { hideLoading(); }
     }, [bioAvailable, bioEnabled, enableBiometric, hideLoading, setEncryptionKeyConfigured, setKey, showLoading]);
 
     const handleSignOut = useCallback(async () => {
         showLoading('Signing out...');
-        try { await signOut(); Toast.show({ type: 'success', text1: 'Signed out successfully.' }); }
+        try { await signOut(); toast.success('Signed out successfully.'); }
         finally { hideLoading(); }
     }, [hideLoading, showLoading, signOut]);
 
@@ -80,7 +125,7 @@ export default function MoreScreen() {
         const next = themeMode === 'system' ? 'light' : themeMode === 'light' ? 'dark' : 'system';
         setThemeMode(next);
         const label = next === 'system' ? 'System default' : next === 'dark' ? 'Dark' : 'Light';
-        Toast.show({ type: 'info', text1: `Theme: ${label}` });
+        toast.info(`Theme: ${label}`);
     }, [themeMode, setThemeMode]);
 
     const settingsItems: SectionItem[] = [
@@ -90,7 +135,6 @@ export default function MoreScreen() {
 
     const securityItems: SectionItem[] = [
         ...(!encryptionKeyConfigured ? [{ key: 'setup-key', icon: 'key-plus', label: 'Set Encryption Key', subtitle: 'Configure your encryption PIN for vault access', accent: '#2563eb', onPress: () => setShowEncryptionModal(true) }] : []),
-        ...(bioAvailable ? [{ key: 'biometric', icon: 'fingerprint', label: 'Biometric unlock', subtitle: bioEnabled ? 'Enabled — tap to disable' : 'Disabled — enter PIN in vault to enable', accent: '#10b981', onPress: handleToggleBiometric }] : []),
         { key: 'clear-key', icon: 'key-remove', label: 'Clear cached key', subtitle: 'Require PIN re-entry on next access', accent: '#0ea5e9', onPress: handleClearLocalKey },
         { key: 'reset-key', icon: 'lock-reset', label: 'Reset encryption key', subtitle: 'Deletes all encrypted data permanently', accent: '#ef4444', danger: true, onPress: handleResetEncryptionKey },
     ];
@@ -102,7 +146,7 @@ export default function MoreScreen() {
 
     const aboutItems: SectionItem[] = [
         { key: 'version', icon: 'information-outline', label: 'App version', subtitle: `Amantra v${APP_VERSION}`, accent: '#64748b' },
-        { key: 'developer', icon: 'code-tags', label: 'Developer', subtitle: 'amankrs21', accent: '#2563eb' },
+        { key: 'developer', icon: 'code-tags', label: 'Developer', subtitle: 'amankrs21 · amankrs21.pages.dev', accent: '#2563eb', onPress: () => Linking.openURL('https://amankrs21.pages.dev') },
     ];
 
     const renderSection = (title: string, items: SectionItem[]) => (
@@ -131,7 +175,11 @@ export default function MoreScreen() {
                 {/* Profile card — replaces dark header */}
                 <View style={styles.profileCard}>
                     <View style={styles.avatarCircle}>
-                        <Text style={styles.avatarText}>{(user?.name ?? user?.email ?? 'U').charAt(0).toUpperCase()}</Text>
+                        {avatarUrl ? (
+                            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={styles.avatarText}>{(user?.name ?? user?.email ?? 'U').charAt(0).toUpperCase()}</Text>
+                        )}
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
                         <Text style={styles.profileName}>{user?.name ?? 'User'}</Text>
@@ -147,6 +195,27 @@ export default function MoreScreen() {
                 {renderSection('Settings', settingsItems)}
                 {renderSection('Data', dataItems)}
                 {renderSection('Security', securityItems)}
+
+                {/* Biometric toggle with interactive switch */}
+                {bioAvailable ? (
+                    <View style={styles.card}>
+                        <View style={styles.row}>
+                            <View style={[styles.iconBadge, { backgroundColor: '#10b98120' }]}>
+                                <MaterialCommunityIcons name="fingerprint" size={22} color="#10b981" />
+                            </View>
+                            <View style={styles.rowContent}>
+                                <Text style={styles.rowLabel}>Biometric Unlock</Text>
+                                <Text style={styles.rowSubtitle}>{bioEnabled ? 'Unlock vault with fingerprint/face' : 'Use fingerprint or face to unlock'}</Text>
+                            </View>
+                            <Switch
+                                value={bioEnabled}
+                                onValueChange={handleToggleBiometric}
+                                trackColor={{ false: colors.border, true: `${colors.accent}80` }}
+                                thumbColor={bioEnabled ? colors.accent : colors.textTertiary}
+                            />
+                        </View>
+                    </View>
+                ) : null}
                 {renderSection('Critical', [
                     { key: 'deactivate', icon: 'account-remove', label: 'Deactivate Account', subtitle: 'Permanently delete your account and all data', accent: '#ef4444', danger: true, onPress: () => router.push({ pathname: '/(tabs)/account', params: { section: 'deactivate' } } as any) },
                 ])}
@@ -159,6 +228,9 @@ export default function MoreScreen() {
             </ScrollView>
 
             <EncryptionKeyModal visible={showEncryptionModal} onClose={() => setShowEncryptionModal(false)} onConfirm={handleSetupEncryptionKey} caption={encryptionKeyConfigured ? 'Re-enter your encryption PIN.' : 'Set your encryption PIN to secure your vault and notes.'} />
+
+            {/* Biometric enable PIN modal */}
+            <EncryptionKeyModal visible={showBiometricPinModal} onClose={() => setShowBiometricPinModal(false)} onConfirm={handleBiometricPinSubmit} caption="Enter your encryption PIN to enable biometric unlock." />
         </View>
     );
 }
@@ -167,7 +239,8 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     screen: { flex: 1, backgroundColor: c.background },
     content: { padding: 24, gap: 24, paddingBottom: 48 },
     profileCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, padding: 20, borderRadius: 24, gap: 16, shadowColor: c.cardShadow, shadowOpacity: 0.08, shadowRadius: 18, elevation: 4, borderWidth: 1, borderColor: c.border },
-    avatarCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' },
+    avatarCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    avatarImage: { width: 56, height: 56, borderRadius: 28 },
     avatarText: { fontSize: 24, fontWeight: '700', color: '#ffffff' },
     profileName: { fontSize: 20, fontWeight: '700', color: c.text },
     profileEmail: { fontSize: 14, color: c.textSecondary },
