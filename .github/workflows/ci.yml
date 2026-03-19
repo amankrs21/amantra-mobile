@@ -73,9 +73,7 @@ jobs:
 
       - name: Get version
         id: version
-        run: |
-          VERSION=$(python3 -c 'import json; print(json.load(open("app.json"))["expo"]["version"])')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(python3 -c \"import json; print(json.load(open('app.json'))['expo']['version'])\")" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
