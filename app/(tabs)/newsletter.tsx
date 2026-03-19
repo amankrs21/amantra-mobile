@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { ThemeColors } from '@/constants/theme';
@@ -62,17 +62,17 @@ export default function NewsletterScreen() {
     const fetchAll = useCallback(async (silent = false) => {
         if (!silent) {
             setLoading(true);
-            Toast.show({ type: 'info', text1: '📰 Loading news...', text2: 'Fetching latest articles — this may take 15-30s on first load.', visibilityTime: 5000 });
+            toast.info('📰 Loading news...', { description: 'Fetching latest articles — this may take 15-30s on first load.' });
         }
         try {
             const { data } = await api.get('/newsletter/feed');
             const list = data?.articles ?? [];
             setAllArticles(list);
             setHasFetched(true);
-            if (!silent && list.length > 0) Toast.show({ type: 'success', text1: `${list.length} articles loaded!` });
+            if (!silent && list.length > 0) toast.success(`${list.length} articles loaded!`);
         } catch (error) {
             console.error('Newsletter fetch failed', error);
-            if (!silent) Toast.show({ type: 'error', text1: 'Unable to load news.' });
+            if (!silent) toast.error('Unable to load news.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -84,7 +84,7 @@ export default function NewsletterScreen() {
         try {
             const { data } = await api.get('/newsletter/feed?category=watchlist');
             setWatchlistArticles(data?.articles ?? []);
-            if (data?.message) Toast.show({ type: 'info', text1: data.message });
+            if (data?.message) toast.info(data.message);
             setHasWatchlistFetched(true);
         } catch (error) {
             console.error('Watchlist news fetch failed', error);
@@ -114,7 +114,7 @@ export default function NewsletterScreen() {
 
     const handleOpen = useCallback(async (url: string) => {
         try { await Linking.openURL(url); }
-        catch { Toast.show({ type: 'error', text1: 'Unable to open link.' }); }
+        catch { toast.error('Unable to open link.'); }
     }, []);
 
     const renderArticle = useCallback(({ item }: { item: Article }) => (

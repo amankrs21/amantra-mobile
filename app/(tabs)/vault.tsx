@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 import * as Clipboard from 'expo-clipboard';
 import { z } from 'zod';
 
@@ -123,14 +123,14 @@ export default function VaultScreen() {
     const fetchVault = useCallback(async () => {
         showLoading('Loading your vault...');
         try { const { data } = await api.post('/vault/fetch', { offSet: 0, pageSize: 100 }); const parsed = VaultListSchema.safeParse(data); if (!parsed.success) throw new Error('Unable to load vault entries'); setEntries(parsed.data); }
-        catch (error) { console.error('Vault fetch failed', error); Toast.show({ type: 'error', text1: 'Cannot fetch passwords', text2: error instanceof Error ? error.message : 'Please try again shortly.' }); }
+        catch (error) { console.error('Vault fetch failed', error); toast.error('Cannot fetch passwords', { description: error instanceof Error ? error.message : 'Please try again shortly.' }); }
         finally { hideLoading(); }
     }, [hideLoading, showLoading]);
 
     const fetchNotes = useCallback(async () => {
         showLoading('Loading encrypted notes...');
         try { const { data } = await api.get('/journal/fetch'); const parsed = NoteListSchema.safeParse(data); if (!parsed.success) throw new Error('Unable to load notes'); setNotes(parsed.data); }
-        catch (error) { console.error('Fetch notes failed', error); Toast.show({ type: 'error', text1: 'Unable to load notes.' }); }
+        catch (error) { console.error('Fetch notes failed', error); toast.error('Unable to load notes.'); }
         finally { hideLoading(); }
     }, [hideLoading, showLoading]);
 
@@ -142,7 +142,7 @@ export default function VaultScreen() {
     // ── Shared encryption handlers ──
     const handleBiometricUnlock = useCallback(async () => {
         const key = await authenticateAndGetKey();
-        if (key) { await setKey(key); await setEncryptionKeyConfigured(true); Toast.show({ type: 'success', text1: 'Unlocked with biometrics.' }); setPromptKey(false); }
+        if (key) { await setKey(key); await setEncryptionKeyConfigured(true); toast.success('Unlocked with biometrics.'); setPromptKey(false); }
     }, [authenticateAndGetKey, setEncryptionKeyConfigured, setKey]);
 
     const handleKeySubmit = useCallback(async (value: string) => {
@@ -152,30 +152,30 @@ export default function VaultScreen() {
             const endpoint = encryptionKeyConfigured ? '/pin/verify' : '/pin/setText';
             await api.post(endpoint, { key: encodeKey(candidate) });
             await setKey(candidate); await setEncryptionKeyConfigured(true);
-            Toast.show({ type: 'success', text1: 'Encryption key saved for quick access.' }); setPromptKey(false);
-            if (bioAvailable && !bioEnabled) { const enrolled = await enableBiometric(candidate); if (enrolled) Toast.show({ type: 'success', text1: 'Biometric unlock enabled!' }); }
-        } catch { Toast.show({ type: 'error', text1: 'Invalid encryption key.' }); }
+            toast.success('Encryption key saved for quick access.'); setPromptKey(false);
+            if (bioAvailable && !bioEnabled) { const enrolled = await enableBiometric(candidate); if (enrolled) toast.success('Biometric unlock enabled!'); }
+        } catch { toast.error('Invalid encryption key.'); }
         finally { hideLoading(); }
     }, [bioAvailable, bioEnabled, enableBiometric, hideLoading, setEncryptionKeyConfigured, setKey, showLoading]);
 
     // ── Password CRUD ──
     const handleAddPassword = useCallback(async ({ title, username, password }: { title: string; username: string; password: string }) => {
-        if (!encodedKey) { setPromptKey(true); Toast.show({ type: 'info', text1: 'Enter your encryption PIN to continue.' }); throw new Error('Encryption key required'); }
+        if (!encodedKey) { setPromptKey(true); toast.info('Enter your encryption PIN to continue.'); throw new Error('Encryption key required'); }
         showLoading('Saving password...');
         try {
             const { data } = await api.post('/vault/add', { title, username, password, key: encodedKey });
-            Toast.show({ type: 'success', text1: 'Password added successfully.' });
+            toast.success('Password added successfully.');
             if (addVaultCategory && data?._id) { await setCategoryForEntry('vault', data._id, addVaultCategory); setVaultCategoryMap((prev) => ({ ...prev, [data._id]: addVaultCategory })); }
             setAddVaultCategory(null); await fetchVault();
-        } catch (error) { console.error('Add password failed', error); Toast.show({ type: 'error', text1: 'Unable to add password.' }); }
+        } catch (error) { console.error('Add password failed', error); toast.error('Unable to add password.'); }
         finally { hideLoading(); }
     }, [addVaultCategory, encodedKey, fetchVault, hideLoading, showLoading]);
 
     const handleUpdatePassword = useCallback(async ({ title, username, password }: { title: string; username: string; password: string }) => {
         if (!encodedKey || !editEntry) { setPromptKey(true); return; }
         showLoading('Updating password...');
-        try { await api.patch('/vault/update', { id: editEntry._id, title, username, password, key: encodedKey }); Toast.show({ type: 'success', text1: 'Password updated.' }); setEditEntry(null); await fetchVault(); }
-        catch (error) { console.error('Update password failed', error); Toast.show({ type: 'error', text1: 'Unable to update password.' }); }
+        try { await api.patch('/vault/update', { id: editEntry._id, title, username, password, key: encodedKey }); toast.success('Password updated.'); setEditEntry(null); await fetchVault(); }
+        catch (error) { console.error('Update password failed', error); toast.error('Unable to update password.'); }
         finally { hideLoading(); }
     }, [editEntry, encodedKey, fetchVault, hideLoading, showLoading]);
 
@@ -183,15 +183,15 @@ export default function VaultScreen() {
         if (!encodedKey) { setPromptKey(true); return; }
         showLoading('Fetching password...');
         try { const { data } = await api.post<{ password: string } | string>(`/vault/${entry._id}`, { key: encodedKey }); const secret = typeof data === 'string' ? decodeKey(data) : decodeKey(data.password); setEditEntry({ ...entry, password: secret }); }
-        catch (error) { console.error('Failed to fetch password for editing', error); Toast.show({ type: 'error', text1: 'Unable to fetch password.' }); }
+        catch (error) { console.error('Failed to fetch password for editing', error); toast.error('Unable to fetch password.'); }
         finally { hideLoading(); }
     }, [encodedKey, hideLoading, showLoading]);
 
     const handleDeletePassword = useCallback(async () => {
         if (!deleteEntry) return;
         showLoading('Deleting password...');
-        try { await api.delete(`/vault/delete/${deleteEntry._id}`); Toast.show({ type: 'success', text1: `${deleteEntry.title} removed.` }); setDeleteEntry(null); await fetchVault(); }
-        catch (error) { console.error('Delete password failed', error); Toast.show({ type: 'error', text1: 'Unable to delete password.' }); }
+        try { await api.delete(`/vault/delete/${deleteEntry._id}`); toast.success(`${deleteEntry.title} removed.`); setDeleteEntry(null); await fetchVault(); }
+        catch (error) { console.error('Delete password failed', error); toast.error('Unable to delete password.'); }
         finally { hideLoading(); }
     }, [deleteEntry, fetchVault, hideLoading, showLoading]);
 
@@ -204,11 +204,11 @@ export default function VaultScreen() {
             setRevealedPasswords((prev) => ({ ...prev, [entry._id]: secret }));
             if (hideTimers.current[entry._id]) clearTimeout(hideTimers.current[entry._id]);
             hideTimers.current[entry._id] = setTimeout(() => { setRevealedPasswords((prev) => { const next = { ...prev }; delete next[entry._id]; return next; }); }, 5000);
-        } catch (error) { console.error('Reveal password failed', error); Toast.show({ type: 'error', text1: 'Unable to decrypt password.' }); if ((error as any)?.response?.status === 401) await clearKey(); }
+        } catch (error) { console.error('Reveal password failed', error); toast.error('Unable to decrypt password.'); if ((error as any)?.response?.status === 401) await clearKey(); }
         finally { hideLoading(); }
     }, [clearKey, encodedKey, hideLoading, showLoading]);
 
-    const handleCopy = useCallback(async (value: string, label: string) => { await Clipboard.setStringAsync(value); Toast.show({ type: 'success', text1: `${label} copied to clipboard.` }); }, []);
+    const handleCopy = useCallback(async (value: string, label: string) => { await Clipboard.setStringAsync(value); toast.success(`${label} copied to clipboard.`); }, []);
 
     const handleVaultCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
         await setCategoryForEntry('vault', entryId, categoryKey);
@@ -220,7 +220,7 @@ export default function VaultScreen() {
         if (!encodedKey) { setPromptKey(true); return; }
         showLoading('Decrypting note...');
         try { const { data } = await api.post<{ content: string } | string>(`/journal/${noteId}`, { key: encodedKey }); const decrypted = typeof data === 'string' ? decodeKey(data) : data.content; setActiveContent((prev) => ({ ...prev, [noteId]: decrypted })); }
-        catch (error) { console.error('Decrypt note failed', error); Toast.show({ type: 'error', text1: 'Unable to decrypt note.' }); }
+        catch (error) { console.error('Decrypt note failed', error); toast.error('Unable to decrypt note.'); }
         finally { hideLoading(); }
     }, [encodedKey, hideLoading, showLoading]);
 
@@ -232,14 +232,14 @@ export default function VaultScreen() {
     }, [activeContent, decryptNote, expandedId]);
 
     const handleAddNote = useCallback(async ({ title, content }: { title: string; content: string }) => {
-        if (!encodedKey) { setPromptKey(true); Toast.show({ type: 'info', text1: 'Enter your encryption PIN to continue.' }); throw new Error('Encryption key required'); }
+        if (!encodedKey) { setPromptKey(true); toast.info('Enter your encryption PIN to continue.'); throw new Error('Encryption key required'); }
         showLoading('Saving secure note...');
         try {
             const { data } = await api.post('/journal/add', { title, content, key: encodedKey });
-            Toast.show({ type: 'success', text1: 'Note saved securely.' });
+            toast.success('Note saved securely.');
             if (addNotesCategory && data?._id) { await setCategoryForEntry('notes', data._id, addNotesCategory); setNotesCategoryMap((prev) => ({ ...prev, [data._id]: addNotesCategory })); }
             setAddNotesCategory(null); await fetchNotes();
-        } catch (error) { console.error('Add note failed', error); Toast.show({ type: 'error', text1: 'Unable to add note.' }); }
+        } catch (error) { console.error('Add note failed', error); toast.error('Unable to add note.'); }
         finally { hideLoading(); }
     }, [addNotesCategory, encodedKey, fetchNotes, hideLoading, showLoading]);
 
@@ -247,7 +247,7 @@ export default function VaultScreen() {
         if (!encodedKey) { setPromptKey(true); return; }
         showLoading('Fetching note...');
         try { const { data } = await api.post<{ content: string } | string>(`/journal/${note._id}`, { key: encodedKey }); const decrypted = typeof data === 'string' ? decodeKey(data) : data.content; setEditNote({ ...note, content: decrypted }); }
-        catch (error) { console.error('Prepare edit failed', error); Toast.show({ type: 'error', text1: 'Unable to load note.' }); }
+        catch (error) { console.error('Prepare edit failed', error); toast.error('Unable to load note.'); }
         finally { hideLoading(); }
     }, [encodedKey, hideLoading, showLoading]);
 
@@ -256,17 +256,17 @@ export default function VaultScreen() {
         showLoading('Updating note...');
         try {
             await api.patch('/journal/update', { id: editNote._id, title, content, key: encodedKey });
-            Toast.show({ type: 'success', text1: 'Note updated.' }); setEditNote(null); await fetchNotes();
+            toast.success('Note updated.'); setEditNote(null); await fetchNotes();
             setActiveContent((prev) => ({ ...prev, [editNote._id]: content }));
-        } catch (error) { console.error('Update note failed', error); Toast.show({ type: 'error', text1: 'Unable to update note.' }); }
+        } catch (error) { console.error('Update note failed', error); toast.error('Unable to update note.'); }
         finally { hideLoading(); }
     }, [editNote, encodedKey, fetchNotes, hideLoading, showLoading]);
 
     const handleDeleteNote = useCallback(async () => {
         if (!deleteNote) return;
         showLoading('Deleting note...');
-        try { await api.delete(`/journal/delete/${deleteNote._id}`); Toast.show({ type: 'success', text1: 'Note deleted.' }); setDeleteNote(null); await fetchNotes(); }
-        catch (error) { console.error('Delete note failed', error); Toast.show({ type: 'error', text1: 'Unable to delete note.' }); }
+        try { await api.delete(`/journal/delete/${deleteNote._id}`); toast.success('Note deleted.'); setDeleteNote(null); await fetchNotes(); }
+        catch (error) { console.error('Delete note failed', error); toast.error('Unable to delete note.'); }
         finally { hideLoading(); }
     }, [deleteNote, fetchNotes, hideLoading, showLoading]);
 
