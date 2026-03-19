@@ -3,6 +3,7 @@ import {
     Animated,
     FlatList,
     LayoutAnimation,
+    PanResponder,
     Platform,
     Pressable,
     StyleSheet,
@@ -99,6 +100,21 @@ export default function VaultScreen() {
     const [notesCategoryFilter, setNotesCategoryFilter] = useState<string | null>(null);
     const [notesCategoryMap, setNotesCategoryMap] = useState<CategoryMapping>({});
     const [addNotesCategory, setAddNotesCategory] = useState<string | null>(null);
+
+    // ── Swipe to cycle category filters ──
+    const swipePanResponder = useMemo(() => PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 20,
+        onPanResponderRelease: (_, gs) => {
+            if (Math.abs(gs.dx) < 50 || Math.abs(gs.dx) < Math.abs(gs.dy)) return;
+            const cats = activeSegment === 'passwords' ? VAULT_CATEGORIES : NOTES_CATEGORIES;
+            const keys: (string | null)[] = [null, ...cats.map((c) => c.key)];
+            const currentFilter = activeSegment === 'passwords' ? vaultCategoryFilter : notesCategoryFilter;
+            const setter = activeSegment === 'passwords' ? setVaultCategoryFilter : setNotesCategoryFilter;
+            const idx = keys.indexOf(currentFilter);
+            if (gs.dx < -50 && idx < keys.length - 1) setter(keys[idx + 1]);
+            else if (gs.dx > 50 && idx > 0) setter(keys[idx - 1]);
+        },
+    }), [activeSegment, vaultCategoryFilter, notesCategoryFilter]);
 
     // ── Load categories ──
     useEffect(() => { void getCategoryMapping('vault').then(setVaultCategoryMap); }, []);
@@ -399,6 +415,7 @@ export default function VaultScreen() {
             )}
 
             {/* List */}
+            <View style={{ flex: 1 }} {...swipePanResponder.panHandlers}>
             {activeSegment === 'passwords' ? (
                 <FlatList
                     data={filteredEntries}
@@ -434,6 +451,7 @@ export default function VaultScreen() {
                     windowSize={5}
                 />
             )}
+            </View>
 
             {/* FAB */}
             <Pressable style={styles.fab} onPress={() => activeSegment === 'passwords' ? setAddVisible(true) : setNoteAddVisible(true)}>

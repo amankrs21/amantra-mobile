@@ -3,6 +3,7 @@ import {
     ActivityIndicator,
     FlatList,
     Linking,
+    PanResponder,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -50,6 +51,17 @@ export default function NewsletterScreen() {
     const [activeTab, setActiveTab] = useState('all');
     const [hasFetched, setHasFetched] = useState(false);
     const [hasWatchlistFetched, setHasWatchlistFetched] = useState(false);
+
+    const swipePanResponder = useMemo(() => PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 20,
+        onPanResponderRelease: (_, gs) => {
+            if (Math.abs(gs.dx) < 50 || Math.abs(gs.dx) < Math.abs(gs.dy)) return;
+            const keys = TABS.map((t) => t.key);
+            const idx = keys.indexOf(activeTab);
+            if (gs.dx < -50 && idx < keys.length - 1) setActiveTab(keys[idx + 1]);
+            else if (gs.dx > 50 && idx > 0) setActiveTab(keys[idx - 1]);
+        },
+    }), [activeTab]);
 
     // Filtered articles — local filtering, no API call
     const displayedArticles = useMemo(() => {
@@ -170,6 +182,7 @@ export default function NewsletterScreen() {
                     <Text style={styles.loadingText}>Fetching & curating news...</Text>
                 </View>
             ) : (
+                <View style={{ flex: 1 }} {...swipePanResponder.panHandlers}>
                 <FlatList
                     data={displayedArticles}
                     keyExtractor={(item, index) => `${item.url}-${index}`}
@@ -187,6 +200,7 @@ export default function NewsletterScreen() {
                     maxToRenderPerBatch={8}
                     windowSize={5}
                 />
+                </View>
             )}
         </View>
     );

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
+    PanResponder,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -58,6 +59,17 @@ export default function WatchlistScreen() {
     const [editItem, setEditItem] = useState<WatchlistItem | null>(null);
     const [deleteItem, setDeleteItem] = useState<WatchlistItem | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    const swipePanResponder = useMemo(() => PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 20,
+        onPanResponderRelease: (_, gs) => {
+            if (Math.abs(gs.dx) < 50 || Math.abs(gs.dx) < Math.abs(gs.dy)) return;
+            const keys: (string | null)[] = [null, ...WATCHLIST_CATEGORIES.map((c) => c.key)];
+            const idx = keys.indexOf(categoryFilter);
+            if (gs.dx < -50 && idx < keys.length - 1) setCategoryFilter(keys[idx + 1]);
+            else if (gs.dx > 50 && idx > 0) setCategoryFilter(keys[idx - 1]);
+        },
+    }), [categoryFilter]);
 
     const filteredItems = useMemo(() => {
         let result = items;
@@ -258,6 +270,7 @@ export default function WatchlistScreen() {
             {loading ? (
                 <View style={styles.loadingState}><ActivityIndicator size="large" color={colors.accent} /></View>
             ) : (
+                <View style={{ flex: 1 }} {...swipePanResponder.panHandlers}>
                 <FlatList
                     data={filteredItems}
                     keyExtractor={(item) => item._id}
@@ -274,6 +287,7 @@ export default function WatchlistScreen() {
                     maxToRenderPerBatch={10}
                     windowSize={5}
                 />
+                </View>
             )}
 
             <Pressable style={styles.fab} onPress={() => setAddVisible(true)}>
