@@ -168,7 +168,7 @@ export default function WatchlistScreen() {
                             color={isWatched ? '#10b981' : isWatching ? '#f59e0b' : colors.textTertiary}
                         />
                     </Pressable>
-                    <Pressable style={{ flex: 1, gap: 2 }} onPress={() => hasParts ? setExpandedId(isExpanded ? null : item._id) : undefined}>
+                    <Pressable style={{ flex: 1, gap: 2 }} onPress={() => setEditItem(item)} onLongPress={hasParts ? () => setExpandedId(isExpanded ? null : item._id) : undefined}>
                         <Text style={[styles.cardTitle, isWatched && styles.cardTitleWatched]}>{item.title}</Text>
                         {item.notes ? <Text style={styles.notesText} numberOfLines={1}>{item.notes.length > 40 ? item.notes.slice(0, 40) + '…' : item.notes}</Text> : null}
                         <View style={styles.metaRow}>
@@ -193,14 +193,11 @@ export default function WatchlistScreen() {
                         </View>
                     </Pressable>
                     <View style={styles.cardActions}>
-                        <Pressable style={styles.actionButton} onPress={() => handleToggleNews(item)}>
-                            <MaterialCommunityIcons name={item.subscribeNews ? 'bell-ring' : 'bell-outline'} size={22} color={item.subscribeNews ? '#f59e0b' : colors.textTertiary} />
-                        </Pressable>
-                        <Pressable style={styles.actionButton} onPress={() => setEditItem(item)}>
-                            <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.accent} />
-                        </Pressable>
-                        <Pressable style={styles.actionButton} onPress={() => setDeleteItem(item)}>
-                            <MaterialCommunityIcons name="trash-can-outline" size={22} color={colors.danger} />
+                        {item.subscribeNews ? (
+                            <MaterialCommunityIcons name="bell-ring" size={14} color="#f59e0b" />
+                        ) : null}
+                        <Pressable style={styles.deleteButton} onPress={() => setDeleteItem(item)}>
+                            <MaterialCommunityIcons name="trash-can-outline" size={24} color={colors.danger} />
                         </Pressable>
                     </View>
                 </View>
@@ -301,8 +298,8 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     partRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
     partName: { fontSize: 14, color: c.text },
     partNameDone: { textDecorationLine: 'line-through', color: c.textTertiary },
-    cardActions: { flexDirection: 'row', gap: 14, alignItems: 'center' },
-    actionButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: c.iconButtonBg },
+    cardActions: { alignItems: 'center', gap: 8 },
+    deleteButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.iconButtonBg },
     loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     fab: { position: 'absolute', right: 24, bottom: 32, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: c.fab, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 },
