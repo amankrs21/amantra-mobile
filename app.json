@@ -22,6 +22,19 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.amankrs21.amantra"
     },
+    "ios": {
+      "bundleIdentifier": "com.amankrs21.amantra",
+      "supportsTablet": true,
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "REPLACE_WITH_REVERSED_IOS_CLIENT_ID"
+            ]
+          }
+        ]
+      }
+    },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
