@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 
 import CategoryPicker from '@/components/ui/CategoryPicker';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -26,7 +26,7 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
     useEffect(() => { if (visible) setFormValues({ title: initialValues?.title ?? '', content: initialValues?.content ?? '' }); }, [initialValues, visible]);
 
     const handleSubmit = async () => {
-        if (!formValues.title.trim() || !formValues.content.trim()) { Toast.show({ type: 'info', text1: 'Title and content are required.' }); return; }
+        if (!formValues.title.trim() || !formValues.content.trim()) { toast.info('Title and content are required.'); return; }
         setIsSubmitting(true);
         try { await onSubmit({ title: formValues.title.trim(), content: formValues.content.trim() }); onClose(); }
         catch (error) { console.error('Note form submission failed', error); }

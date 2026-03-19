@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 
 import CategoryPicker from '@/components/ui/CategoryPicker';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -49,7 +49,7 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
     const handleChange = (field: keyof VaultFormValues, value: string) => setFormValues((prev) => ({ ...prev, [field]: value }));
 
     const handleSubmit = async () => {
-        if (!formValues.title.trim() || !formValues.username.trim() || !formValues.password.trim()) { Toast.show({ type: 'info', text1: 'Please fill out all fields.' }); return; }
+        if (!formValues.title.trim() || !formValues.username.trim() || !formValues.password.trim()) { toast.info('Please fill out all fields.'); return; }
         setIsSubmitting(true);
         try { await onSubmit({ title: formValues.title.trim(), username: formValues.username.trim(), password: formValues.password.trim() }); onClose(); }
         catch (error) { console.error('Vault form submission failed', error); }
@@ -57,8 +57,8 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
     };
 
     const handleGenerate = () => setGeneratedPassword(generatePassword(generatorOptions));
-    const handleUseGenerated = () => { if (generatedPassword) { handleChange('password', generatedPassword); setShowGenerator(false); Toast.show({ type: 'success', text1: 'Password applied.' }); } };
-    const handleCopyGenerated = async () => { if (generatedPassword) { await Clipboard.setStringAsync(generatedPassword); Toast.show({ type: 'success', text1: 'Password copied to clipboard.' }); } };
+    const handleUseGenerated = () => { if (generatedPassword) { handleChange('password', generatedPassword); setShowGenerator(false); toast.success('Password applied.'); } };
+    const handleCopyGenerated = async () => { if (generatedPassword) { await Clipboard.setStringAsync(generatedPassword); toast.success('Password copied to clipboard.'); } };
     const toggleOption = (key: keyof Omit<PasswordOptions, 'length'>) => setGeneratorOptions((prev) => ({ ...prev, [key]: !prev[key] }));
 
     const renderOptionChip = (key: keyof Omit<PasswordOptions, 'length'>, label: string) => {
