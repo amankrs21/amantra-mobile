@@ -24,16 +24,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.amankrs21.amantra",
-      "supportsTablet": true,
-      "infoPlist": {
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLSchemes": [
-              "REPLACE_WITH_REVERSED_IOS_CLIENT_ID"
-            ]
-          }
-        ]
-      }
+      "supportsTablet": true
     },
     "web": {
       "output": "static",
