@@ -14,6 +14,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
+import EmptyState from '@/components/ui/EmptyState';
+import { useSwipeFilter } from '@/hooks/use-swipe-filter';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { ThemeColors } from '@/constants/theme';
 import api from '@/services/api';
@@ -50,6 +52,9 @@ export default function NewsletterScreen() {
     const [activeTab, setActiveTab] = useState('all');
     const [hasFetched, setHasFetched] = useState(false);
     const [hasWatchlistFetched, setHasWatchlistFetched] = useState(false);
+
+    const tabKeys = useMemo(() => TABS.map((t) => t.key), []);
+    const swipePanResponder = useSwipeFilter(tabKeys, activeTab, setActiveTab);
 
     // Filtered articles — local filtering, no API call
     const displayedArticles = useMemo(() => {
@@ -155,7 +160,7 @@ export default function NewsletterScreen() {
             <Text style={styles.headerTitle}>Newsletter</Text>
             <Text style={styles.headerSubtitle}>AI-curated news from the last 48 hours.</Text>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={styles.tabRow}>
                 {TABS.map((tab) => (
                     <Pressable key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]} onPress={() => setActiveTab(tab.key)}>
                         <MaterialCommunityIcons name={tab.icon as any} size={14} color={activeTab === tab.key ? '#fff' : colors.textSecondary} />
@@ -170,6 +175,7 @@ export default function NewsletterScreen() {
                     <Text style={styles.loadingText}>Fetching & curating news...</Text>
                 </View>
             ) : (
+                <View style={{ flex: 1 }} {...swipePanResponder.panHandlers}>
                 <FlatList
                     data={displayedArticles}
                     keyExtractor={(item, index) => `${item.url}-${index}`}
@@ -177,16 +183,13 @@ export default function NewsletterScreen() {
                     renderItem={renderArticle}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
                     ListEmptyComponent={() => (
-                        <View style={styles.emptyState}>
-                            <MaterialCommunityIcons name="newspaper-variant-outline" size={48} color={colors.textTertiary} />
-                            <Text style={styles.emptyTitle}>No news to show</Text>
-                            <Text style={styles.emptySubtitle}>Pull to refresh or check back later.</Text>
-                        </View>
+                        <EmptyState icon="newspaper-variant-outline" title="No news to show" subtitle="Pull to refresh or check back later." />
                     )}
                     removeClippedSubviews={true}
                     maxToRenderPerBatch={8}
                     windowSize={5}
                 />
+                </View>
             )}
         </View>
     );
@@ -216,7 +219,4 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     loadingText: { fontSize: 14, color: c.textSecondary },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-    emptyState: { alignItems: 'center', gap: 8, paddingTop: 48 },
-    emptyTitle: { fontSize: 18, fontWeight: '600', color: c.text },
-    emptySubtitle: { fontSize: 14, color: c.textSecondary, textAlign: 'center' },
 });

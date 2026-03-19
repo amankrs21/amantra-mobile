@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -19,17 +21,18 @@ import type { ThemeColors } from '@/constants/theme';
 import { type CategoryDef } from '@/utils/categories';
 import { DEFAULT_PASSWORD_OPTIONS, generatePassword, type PasswordOptions } from '@/utils/password-generator';
 
-type VaultFormValues = { title: string; username: string; password: string };
+type VaultFormValues = { title: string; username: string; password: string; category?: string | null };
 type VaultFormModalProps = {
     visible: boolean; mode: 'create' | 'edit'; initialValues?: Partial<VaultFormValues>;
     onClose: () => void; onSubmit: (values: VaultFormValues) => Promise<void> | void;
-    categoryKey?: string | null; onCategoryChange?: (key: string | null) => void; categories?: CategoryDef[];
+    categoryKey?: string | null; categories?: CategoryDef[];
 };
 
 const EMPTY_VALUES: VaultFormValues = { title: '', username: '', password: '' };
 
-export default function VaultFormModal({ visible, mode, initialValues, onClose, onSubmit, categoryKey, onCategoryChange, categories }: VaultFormModalProps) {
+export default function VaultFormModal({ visible, mode, initialValues, onClose, onSubmit, categoryKey, categories }: VaultFormModalProps) {
     const [formValues, setFormValues] = useState<VaultFormValues>(EMPTY_VALUES);
+    const [localCategory, setLocalCategory] = useState<string | null>(categoryKey ?? null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showGenerator, setShowGenerator] = useState(false);
     const [generatorOptions, setGeneratorOptions] = useState<PasswordOptions>(DEFAULT_PASSWORD_OPTIONS);
@@ -42,6 +45,7 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
     useEffect(() => {
         if (visible) {
             setFormValues({ title: initialValues?.title ?? '', username: initialValues?.username ?? '', password: initialValues?.password ?? '' });
+            setLocalCategory(categoryKey ?? null);
             setShowGenerator(false); setGeneratedPassword(''); setGeneratorOptions(DEFAULT_PASSWORD_OPTIONS); setShowPasswordField(false);
         }
     }, [initialValues, visible]);
@@ -51,7 +55,7 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
     const handleSubmit = async () => {
         if (!formValues.title.trim() || !formValues.username.trim() || !formValues.password.trim()) { toast.info('Please fill out all fields.'); return; }
         setIsSubmitting(true);
-        try { await onSubmit({ title: formValues.title.trim(), username: formValues.username.trim(), password: formValues.password.trim() }); onClose(); }
+        try { await onSubmit({ title: formValues.title.trim(), username: formValues.username.trim(), password: formValues.password.trim(), category: localCategory }); onClose(); }
         catch (error) { console.error('Vault form submission failed', error); }
         finally { setIsSubmitting(false); }
     };
@@ -70,6 +74,11 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
         <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
             <SafeAreaView style={styles.overlay}>
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                <KeyboardAvoidingView
+                    style={{ flex: 1, justifyContent: 'flex-end' }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={0}
+                >
                 <View style={styles.sheet}>
                     <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                         <View style={styles.handleBar} />
@@ -101,10 +110,10 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
                             </View>
                         </View>
 
-                        {categories && onCategoryChange ? (
+                        {categories ? (
                             <View style={styles.fieldGroup}>
                                 <Text style={styles.label}>Category</Text>
-                                <CategoryPicker categories={categories} selected={categoryKey ?? null} onSelect={onCategoryChange} />
+                                <CategoryPicker categories={categories} selected={localCategory} onSelect={setLocalCategory} />
                             </View>
                         ) : null}
 
@@ -163,6 +172,7 @@ export default function VaultFormModal({ visible, mode, initialValues, onClose, 
                         </View>
                     </ScrollView>
                 </View>
+                </KeyboardAvoidingView>
             </SafeAreaView>
         </Modal>
     );

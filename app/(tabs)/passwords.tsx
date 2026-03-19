@@ -19,10 +19,7 @@ import { useEncryptionKey } from '@/hooks/use-encryption-key';
 import { useLoading } from '@/hooks/use-loading';
 import api from '@/services/api';
 import {
-    type CategoryMapping,
     getCategoryDef,
-    getCategoryMapping,
-    setCategoryForEntry,
     VAULT_CATEGORIES,
 } from '@/utils/categories';
 import { decodeKey, encodeKey } from '@/utils/crypto';
@@ -33,6 +30,7 @@ const VaultEntrySchema = z.object({
     username: z.string(),
     updatedAt: z.string(),
     createdAt: z.string().optional(),
+    category: z.string().nullable().optional(),
 });
 
 type VaultEntry = z.infer<typeof VaultEntrySchema> & { password?: string };
@@ -57,10 +55,6 @@ export default function PasswordsScreen() {
     const [revealedPasswords, setRevealedPasswords] = useState<Record<string, string>>({});
     const hideTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-    const [categoryMap, setCategoryMap] = useState<CategoryMapping>({});
-    const [addCategory, setAddCategory] = useState<string | null>(null);
-
-    useEffect(() => { void getCategoryMapping('vault').then(setCategoryMap); }, []);
 
     const filteredEntries = useMemo(() => {
         let result = entries;
@@ -69,10 +63,10 @@ export default function PasswordsScreen() {
             result = result.filter((entry) => entry.title.toLowerCase().includes(normalized));
         }
         if (categoryFilter) {
-            result = result.filter((entry) => categoryMap[entry._id] === categoryFilter);
+            result = result.filter((entry) => entry.category === categoryFilter);
         }
         return result;
-    }, [entries, searchTerm, categoryFilter, categoryMap]);
+    }, [entries, searchTerm, categoryFilter]);
 
     const fetchVault = useCallback(async () => {
         showLoading('Loading your vault...');
@@ -120,26 +114,24 @@ export default function PasswordsScreen() {
         } finally { hideLoading(); }
     }, [bioAvailable, bioEnabled, enableBiometric, hideLoading, setEncryptionKeyConfigured, setKey, showLoading]);
 
-    const handleAdd = useCallback(async ({ title, username, password }: { title: string; username: string; password: string }) => {
+    const handleAdd = useCallback(async ({ title, username, password, category }: { title: string; username: string; password: string; category?: string | null }) => {
         if (!encodedKey) { setPromptKey(true); toast.info('Enter your encryption PIN to continue.'); throw new Error('Encryption key required'); }
         showLoading('Saving password...');
         try {
-            const { data } = await api.post('/vault/add', { title, username, password, key: encodedKey });
+            await api.post('/vault/add', { title, username, password, key: encodedKey, category });
             toast.success('Password added successfully.');
-            if (addCategory && data?._id) { await setCategoryForEntry('vault', data._id, addCategory); setCategoryMap((prev) => ({ ...prev, [data._id]: addCategory })); }
-            setAddCategory(null);
             await fetchVault();
         } catch (error) {
             console.error('Add password failed', error);
             toast.error('Unable to add password', { description: error instanceof Error ? error.message : 'Please try again later.' });
         } finally { hideLoading(); }
-    }, [addCategory, encodedKey, fetchVault, hideLoading, showLoading]);
+    }, [encodedKey, fetchVault, hideLoading, showLoading]);
 
-    const handleUpdate = useCallback(async ({ title, username, password }: { title: string; username: string; password: string }) => {
+    const handleUpdate = useCallback(async ({ title, username, password, category }: { title: string; username: string; password: string; category?: string | null }) => {
         if (!encodedKey || !editEntry) { setPromptKey(true); return; }
         showLoading('Updating password...');
         try {
-            await api.patch('/vault/update', { id: editEntry._id, title, username, password, key: encodedKey });
+            await api.patch('/vault/update', { id: editEntry._id, title, username, password, key: encodedKey, category: category ?? editEntry.category ?? null });
             toast.success('Password updated.');
             setEditEntry(null);
             await fetchVault();
@@ -199,19 +191,9 @@ export default function PasswordsScreen() {
         toast.success(`${label} copied to clipboard.`);
     }, []);
 
-    const handleCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
-        await setCategoryForEntry('vault', entryId, categoryKey);
-        setCategoryMap((prev) => {
-            const next = { ...prev };
-            if (categoryKey) next[entryId] = categoryKey; else delete next[entryId];
-            return next;
-        });
-    }, []);
-
     const renderItem = ({ item }: { item: VaultEntry }) => {
         const revealed = revealedPasswords[item._id];
-        const catKey = categoryMap[item._id];
-        const catDef = catKey ? getCategoryDef('vault', catKey) : undefined;
+        const catDef = item.category ? getCategoryDef('vault', item.category) : undefined;
         return (
             <View style={styles.itemCard}>
                 <View style={{ flex: 1, gap: 6 }}>
@@ -287,8 +269,8 @@ export default function PasswordsScreen() {
                 <MaterialCommunityIcons name="plus" size={26} color={colors.fabIcon} />
             </Pressable>
 
-            <VaultFormModal visible={isAddVisible} mode="create" onClose={() => { setAddVisible(false); setAddCategory(null); }} onSubmit={handleAdd} categoryKey={addCategory} onCategoryChange={setAddCategory} categories={VAULT_CATEGORIES} />
-            {editEntry ? (<VaultFormModal visible mode="edit" initialValues={{ title: editEntry.title, username: editEntry.username, password: editEntry.password ?? '' }} onClose={() => setEditEntry(null)} onSubmit={handleUpdate} categoryKey={categoryMap[editEntry._id] ?? null} onCategoryChange={(key) => handleCategoryChange(editEntry._id, key)} categories={VAULT_CATEGORIES} />) : null}
+            <VaultFormModal visible={isAddVisible} mode="create" onClose={() => setAddVisible(false)} onSubmit={handleAdd} categories={VAULT_CATEGORIES} />
+            {editEntry ? (<VaultFormModal visible mode="edit" initialValues={{ title: editEntry.title, username: editEntry.username, password: editEntry.password ?? '' }} onClose={() => setEditEntry(null)} onSubmit={handleUpdate} categoryKey={editEntry.category ?? null} categories={VAULT_CATEGORIES} />) : null}
             {deleteEntry ? (<VaultDeleteModal visible title={deleteEntry.title} onClose={() => setDeleteEntry(null)} onConfirm={handleDelete} />) : null}
             <EncryptionKeyModal visible={promptKey && isKeyHydrated} onClose={() => setPromptKey(false)} onConfirm={handleKeySubmit} caption={encryptionKeyConfigured ? 'Re-enter your encryption PIN to continue.' : 'Set your encryption PIN to unlock passwords.'} biometricAvailable={bioAvailable && bioEnabled} onBiometric={handleBiometricUnlock} />
         </View>
@@ -312,7 +294,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     revealLabel: { fontSize: 13, fontWeight: '600', color: c.revealButtonText },
     iconButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: c.iconButtonBg },
     revealedBadge: { backgroundColor: c.revealBadge, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-    revealedLabel: { color: '#0f172a', fontWeight: '600' },
+    revealedLabel: { color: c.text, fontWeight: '600' },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     emptyState: { alignItems: 'center', gap: 8, paddingTop: 48 },
     emptyTitle: { fontSize: 18, fontWeight: '600', color: c.text },

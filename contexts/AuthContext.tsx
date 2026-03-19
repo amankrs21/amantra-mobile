@@ -37,6 +37,8 @@ const AUTH_USER_KEY = 'securevault:user';
 const AUTH_KEY_FLAG = 'securevault:key-configured';
 const ENCRYPTION_KEY = 'securevault:ekey';
 const BIOMETRIC_ENABLED_KEY = 'securevault.biometric-enabled';
+const VAULT_CATEGORIES_KEY = 'securevault:vault-categories';
+const NOTES_CATEGORIES_KEY = 'securevault:notes-categories';
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -105,13 +107,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setKeyConfigured(false);
         setAuthToken(null);
 
-        // Clear ALL user data from storage — encryption key, biometric flag, auth tokens
+        // Clear ALL user data from storage — encryption key, biometric flag, auth tokens, categories
         await AsyncStorage.multiRemove([
             AUTH_TOKEN_KEY,
             AUTH_USER_KEY,
             AUTH_KEY_FLAG,
             ENCRYPTION_KEY,
             BIOMETRIC_ENABLED_KEY,
+            VAULT_CATEGORIES_KEY,
+            NOTES_CATEGORIES_KEY,
         ]);
 
         // Also clear biometric key from secure store

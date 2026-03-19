@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
@@ -8,27 +8,28 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { ThemeColors } from '@/constants/theme';
 import { type CategoryDef } from '@/utils/categories';
 
-type NoteFormValues = { title: string; content: string };
+type NoteFormValues = { title: string; content: string; category?: string | null };
 type NoteFormModalProps = {
     visible: boolean; mode: 'create' | 'edit'; initialValues?: Partial<NoteFormValues>;
     onClose: () => void; onSubmit: (values: NoteFormValues) => Promise<void> | void;
-    categoryKey?: string | null; onCategoryChange?: (key: string | null) => void; categories?: CategoryDef[];
+    categoryKey?: string | null; categories?: CategoryDef[];
 };
 
 const EMPTY_VALUES: NoteFormValues = { title: '', content: '' };
 
-export default function NoteFormModal({ visible, mode, initialValues, onClose, onSubmit, categoryKey, onCategoryChange, categories }: NoteFormModalProps) {
+export default function NoteFormModal({ visible, mode, initialValues, onClose, onSubmit, categoryKey, categories }: NoteFormModalProps) {
     const [formValues, setFormValues] = useState<NoteFormValues>(EMPTY_VALUES);
+    const [localCategory, setLocalCategory] = useState<string | null>(categoryKey ?? null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const colors = useThemeColors();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
-    useEffect(() => { if (visible) setFormValues({ title: initialValues?.title ?? '', content: initialValues?.content ?? '' }); }, [initialValues, visible]);
+    useEffect(() => { if (visible) { setFormValues({ title: initialValues?.title ?? '', content: initialValues?.content ?? '' }); setLocalCategory(categoryKey ?? null); } }, [initialValues, visible]);
 
     const handleSubmit = async () => {
         if (!formValues.title.trim() || !formValues.content.trim()) { toast.info('Title and content are required.'); return; }
         setIsSubmitting(true);
-        try { await onSubmit({ title: formValues.title.trim(), content: formValues.content.trim() }); onClose(); }
+        try { await onSubmit({ title: formValues.title.trim(), content: formValues.content.trim(), category: localCategory }); onClose(); }
         catch (error) { console.error('Note form submission failed', error); }
         finally { setIsSubmitting(false); }
     };
@@ -37,6 +38,11 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
         <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
             <SafeAreaView style={styles.overlay}>
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                <KeyboardAvoidingView
+                    style={{ flex: 1, justifyContent: 'flex-end' }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={0}
+                >
                 <View style={styles.sheet}>
                     <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                         <View style={styles.handleBar} />
@@ -50,10 +56,10 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
                             <Text style={styles.label}>Content *</Text>
                             <TextInput style={[styles.input, styles.textArea]} placeholder="Write your thoughts securely..." placeholderTextColor={colors.placeholder} value={formValues.content} multiline autoCapitalize="sentences" onChangeText={(text) => setFormValues((prev) => ({ ...prev, content: text }))} />
                         </View>
-                        {categories && onCategoryChange ? (
+                        {categories ? (
                             <View style={styles.fieldGroup}>
                                 <Text style={styles.label}>Category</Text>
-                                <CategoryPicker categories={categories} selected={categoryKey ?? null} onSelect={onCategoryChange} />
+                                <CategoryPicker categories={categories} selected={localCategory} onSelect={setLocalCategory} />
                             </View>
                         ) : null}
 
@@ -67,6 +73,7 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
                         </View>
                     </ScrollView>
                 </View>
+                </KeyboardAvoidingView>
             </SafeAreaView>
         </Modal>
     );
