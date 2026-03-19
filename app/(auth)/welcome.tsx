@@ -160,7 +160,7 @@ export default function WelcomeScreen() {
                         </Pressable>
 
                         <Pressable onPress={() => router.push('/(auth)/register')} style={styles.linkRow}>
-                            <Text style={styles.linkText}>Don't have an account? <Text style={styles.linkBold}>Register</Text></Text>
+                            <Text style={styles.linkText}>Don&apos;t have an account? <Text style={styles.linkBold}>Register</Text></Text>
                         </Pressable>
 
                         <View style={styles.divider}>
