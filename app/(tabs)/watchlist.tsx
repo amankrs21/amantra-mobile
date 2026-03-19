@@ -193,14 +193,14 @@ export default function WatchlistScreen() {
                         </View>
                     </Pressable>
                     <View style={styles.cardActions}>
-                        <Pressable onPress={() => handleToggleNews(item)}>
-                            <MaterialCommunityIcons name={item.subscribeNews ? 'bell-ring' : 'bell-outline'} size={18} color={item.subscribeNews ? '#f59e0b' : colors.textTertiary} />
+                        <Pressable style={styles.actionButton} onPress={() => handleToggleNews(item)}>
+                            <MaterialCommunityIcons name={item.subscribeNews ? 'bell-ring' : 'bell-outline'} size={22} color={item.subscribeNews ? '#f59e0b' : colors.textTertiary} />
                         </Pressable>
-                        <Pressable onPress={() => setEditItem(item)}>
-                            <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.accent} />
+                        <Pressable style={styles.actionButton} onPress={() => setEditItem(item)}>
+                            <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.accent} />
                         </Pressable>
-                        <Pressable onPress={() => setDeleteItem(item)}>
-                            <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.danger} />
+                        <Pressable style={styles.actionButton} onPress={() => setDeleteItem(item)}>
+                            <MaterialCommunityIcons name="trash-can-outline" size={22} color={colors.danger} />
                         </Pressable>
                     </View>
                 </View>
@@ -301,7 +301,8 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     partRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
     partName: { fontSize: 14, color: c.text },
     partNameDone: { textDecorationLine: 'line-through', color: c.textTertiary },
-    cardActions: { gap: 10, alignItems: 'center' },
+    cardActions: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+    actionButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: c.iconButtonBg },
     loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     fab: { position: 'absolute', right: 24, bottom: 32, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: c.fab, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 },
