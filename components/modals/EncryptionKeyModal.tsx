@@ -31,9 +31,14 @@ export default function EncryptionKeyModal({
     biometricAvailable,
 }: EncryptionKeyModalProps) {
     const [key, setKey] = useState('');
+    const [showPin, setShowPin] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const colors = useThemeColors();
     const styles = useMemo(() => createStyles(colors), [colors]);
+
+    useEffect(() => {
+        if (visible) setKey('');
+    }, [visible]);
 
     useEffect(() => {
         if (visible && biometricAvailable && onBiometric) {
@@ -44,7 +49,7 @@ export default function EncryptionKeyModal({
     const handleSubmit = async () => {
         if (!key.trim()) return;
         setIsSubmitting(true);
-        try { await onConfirm(key.trim()); setKey(''); onClose(); }
+        try { await onConfirm(key.trim()); setKey(''); }
         finally { setIsSubmitting(false); }
     };
 
@@ -63,7 +68,12 @@ export default function EncryptionKeyModal({
                         </Pressable>
                     ) : null}
 
-                    <TextInput value={key} onChangeText={setKey} placeholder="Enter your encryption PIN" placeholderTextColor={colors.placeholder} autoFocus={!biometricAvailable} secureTextEntry autoCapitalize="none" style={styles.input} />
+                    <View style={styles.pinRow}>
+                        <TextInput value={key} onChangeText={setKey} placeholder="Enter your encryption PIN" placeholderTextColor={colors.placeholder} autoFocus={!biometricAvailable} secureTextEntry={!showPin} autoCapitalize="none" style={[styles.input, styles.pinInput]} />
+                        <Pressable style={styles.eyeButton} onPress={() => setShowPin(v => !v)}>
+                            <MaterialCommunityIcons name={showPin ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textSecondary} />
+                        </Pressable>
+                    </View>
                     <View style={styles.buttonRow}>
                         <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose} disabled={isSubmitting}>
                             <Text style={[styles.buttonLabel, styles.cancelLabel]}>Cancel</Text>
@@ -86,6 +96,9 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     biometricButton: { alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, backgroundColor: c.biometricBg, borderRadius: 16, borderWidth: 1, borderColor: c.biometricBorder },
     biometricLabel: { fontSize: 13, fontWeight: '600', color: c.tint },
     input: { borderWidth: 1, borderColor: c.inputBorder, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 16, fontSize: 16, color: c.text, backgroundColor: c.inputBg },
+    pinRow: { flexDirection: 'row' as const, alignItems: 'center' as const, borderWidth: 1, borderColor: c.inputBorder, borderRadius: 16, backgroundColor: c.inputBg },
+    pinInput: { flex: 1, borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent' },
+    eyeButton: { paddingHorizontal: 16, paddingVertical: 12 },
     buttonRow: { flexDirection: 'row', gap: 12 },
     button: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
     cancelButton: { backgroundColor: c.cancelBg },

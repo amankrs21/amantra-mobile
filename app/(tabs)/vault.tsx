@@ -505,7 +505,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     revealLabel: { fontSize: 13, fontWeight: '600', color: c.revealButtonText },
     iconButton: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: c.iconButtonBg },
     revealedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.revealBadge, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, maxWidth: 160 },
-    revealedLabel: { fontSize: 13, fontWeight: '600', color: '#0f172a', flexShrink: 1 },
+    revealedLabel: { fontSize: 13, fontWeight: '600', color: c.text, flexShrink: 1 },
 
     // Note items
     noteCard: { backgroundColor: c.surfaceSolid, borderRadius: 18, padding: 14, gap: 10, borderWidth: 1, borderColor: c.border },

@@ -312,7 +312,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     revealLabel: { fontSize: 13, fontWeight: '600', color: c.revealButtonText },
     iconButton: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: c.iconButtonBg },
     revealedBadge: { backgroundColor: c.revealBadge, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-    revealedLabel: { color: '#0f172a', fontWeight: '600' },
+    revealedLabel: { color: c.text, fontWeight: '600' },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     emptyState: { alignItems: 'center', gap: 8, paddingTop: 48 },
     emptyTitle: { fontSize: 18, fontWeight: '600', color: c.text },

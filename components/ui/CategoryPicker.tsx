@@ -1,6 +1,9 @@
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { ThemeColors } from '@/constants/theme';
 import { type CategoryDef } from '@/utils/categories';
 
 type CategoryPickerProps = {
@@ -10,6 +13,9 @@ type CategoryPickerProps = {
 };
 
 export default function CategoryPicker({ categories, selected, onSelect }: CategoryPickerProps) {
+    const colors = useThemeColors();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     return (
         <View style={styles.container}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -40,7 +46,7 @@ export default function CategoryPicker({ categories, selected, onSelect }: Categ
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         marginVertical: 4,
     },
@@ -55,12 +61,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 12,
-        backgroundColor: 'rgba(15, 23, 42, 0.06)',
+        backgroundColor: c.chipBg,
     },
     chipLabel: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#0f172a',
+        color: c.chipText,
     },
     chipLabelActive: {
         color: '#fff',
