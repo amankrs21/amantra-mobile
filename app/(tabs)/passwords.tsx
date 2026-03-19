@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 import * as Clipboard from 'expo-clipboard';
 import { z } from 'zod';
 
@@ -83,7 +83,7 @@ export default function PasswordsScreen() {
             setEntries(parsed.data);
         } catch (error) {
             console.error('Vault fetch failed', error);
-            Toast.show({ type: 'error', text1: 'Cannot fetch passwords', text2: error instanceof Error ? error.message : 'Please try again shortly.' });
+            toast.error('Cannot fetch passwords', { description: error instanceof Error ? error.message : 'Please try again shortly.' });
         } finally { hideLoading(); }
     }, [hideLoading, showLoading]);
 
@@ -96,7 +96,7 @@ export default function PasswordsScreen() {
 
     const handleBiometricUnlock = useCallback(async () => {
         const key = await authenticateAndGetKey();
-        if (key) { await setKey(key); await setEncryptionKeyConfigured(true); Toast.show({ type: 'success', text1: 'Unlocked with biometrics.' }); setPromptKey(false); }
+        if (key) { await setKey(key); await setEncryptionKeyConfigured(true); toast.success('Unlocked with biometrics.'); setPromptKey(false); }
     }, [authenticateAndGetKey, setEncryptionKeyConfigured, setKey]);
 
     const handleKeySubmit = useCallback(async (value: string) => {
@@ -108,30 +108,30 @@ export default function PasswordsScreen() {
             await api.post(endpoint, { key: encodeKey(candidate) });
             await setKey(candidate);
             await setEncryptionKeyConfigured(true);
-            Toast.show({ type: 'success', text1: 'Encryption key saved for quick access.' });
+            toast.success('Encryption key saved for quick access.');
             setPromptKey(false);
             if (bioAvailable && !bioEnabled) {
                 const enrolled = await enableBiometric(candidate);
-                if (enrolled) Toast.show({ type: 'success', text1: 'Biometric unlock enabled!' });
+                if (enrolled) toast.success('Biometric unlock enabled!');
             }
         } catch (error) {
             console.error('Key validation failed', error);
-            Toast.show({ type: 'error', text1: 'Invalid encryption key', text2: 'Double-check your PIN and try again.' });
+            toast.error('Invalid encryption key', { description: 'Double-check your PIN and try again.' });
         } finally { hideLoading(); }
     }, [bioAvailable, bioEnabled, enableBiometric, hideLoading, setEncryptionKeyConfigured, setKey, showLoading]);
 
     const handleAdd = useCallback(async ({ title, username, password }: { title: string; username: string; password: string }) => {
-        if (!encodedKey) { setPromptKey(true); Toast.show({ type: 'info', text1: 'Enter your encryption PIN to continue.' }); throw new Error('Encryption key required'); }
+        if (!encodedKey) { setPromptKey(true); toast.info('Enter your encryption PIN to continue.'); throw new Error('Encryption key required'); }
         showLoading('Saving password...');
         try {
             const { data } = await api.post('/vault/add', { title, username, password, key: encodedKey });
-            Toast.show({ type: 'success', text1: 'Password added successfully.' });
+            toast.success('Password added successfully.');
             if (addCategory && data?._id) { await setCategoryForEntry('vault', data._id, addCategory); setCategoryMap((prev) => ({ ...prev, [data._id]: addCategory })); }
             setAddCategory(null);
             await fetchVault();
         } catch (error) {
             console.error('Add password failed', error);
-            Toast.show({ type: 'error', text1: 'Unable to add password', text2: error instanceof Error ? error.message : 'Please try again later.' });
+            toast.error('Unable to add password', { description: error instanceof Error ? error.message : 'Please try again later.' });
         } finally { hideLoading(); }
     }, [addCategory, encodedKey, fetchVault, hideLoading, showLoading]);
 
@@ -140,12 +140,12 @@ export default function PasswordsScreen() {
         showLoading('Updating password...');
         try {
             await api.patch('/vault/update', { id: editEntry._id, title, username, password, key: encodedKey });
-            Toast.show({ type: 'success', text1: 'Password updated.' });
+            toast.success('Password updated.');
             setEditEntry(null);
             await fetchVault();
         } catch (error) {
             console.error('Update password failed', error);
-            Toast.show({ type: 'error', text1: 'Unable to update password.' });
+            toast.error('Unable to update password.');
         } finally { hideLoading(); }
     }, [editEntry, encodedKey, fetchVault, hideLoading, showLoading]);
 
@@ -158,7 +158,7 @@ export default function PasswordsScreen() {
             setEditEntry({ ...entry, password: secret });
         } catch (error) {
             console.error('Failed to fetch password for editing', error);
-            Toast.show({ type: 'error', text1: 'Unable to fetch password.' });
+            toast.error('Unable to fetch password.');
         } finally { hideLoading(); }
     }, [encodedKey, hideLoading, showLoading]);
 
@@ -167,12 +167,12 @@ export default function PasswordsScreen() {
         showLoading('Deleting password...');
         try {
             await api.delete(`/vault/delete/${deleteEntry._id}`);
-            Toast.show({ type: 'success', text1: `${deleteEntry.title} removed.` });
+            toast.success(`${deleteEntry.title} removed.`);
             setDeleteEntry(null);
             await fetchVault();
         } catch (error) {
             console.error('Delete password failed', error);
-            Toast.show({ type: 'error', text1: 'Unable to delete password.' });
+            toast.error('Unable to delete password.');
         } finally { hideLoading(); }
     }, [deleteEntry, fetchVault, hideLoading, showLoading]);
 
@@ -189,14 +189,14 @@ export default function PasswordsScreen() {
             }, 5000);
         } catch (error) {
             console.error('Reveal password failed', error);
-            Toast.show({ type: 'error', text1: 'Unable to decrypt password.' });
+            toast.error('Unable to decrypt password.');
             if ((error as { response?: { status?: number } })?.response?.status === 401) await clearKey();
         } finally { hideLoading(); }
     }, [clearKey, encodedKey, hideLoading, showLoading]);
 
     const handleCopy = useCallback(async (value: string, label: string) => {
         await Clipboard.setStringAsync(value);
-        Toast.show({ type: 'success', text1: `${label} copied to clipboard.` });
+        toast.success(`${label} copied to clipboard.`);
     }, []);
 
     const handleCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
