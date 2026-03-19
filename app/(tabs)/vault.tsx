@@ -375,33 +375,33 @@ export default function VaultScreen() {
 
             {/* List */}
             <Animated.View style={[{ flex: 1 }, swipeAnimatedStyle]} {...swipePanHandlers}>
-            {activeSegment === 'passwords' ? (
-                <FlatList
-                    data={filteredEntries}
-                    keyExtractor={(item) => item._id}
-                    contentContainerStyle={filteredEntries.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
-                    renderItem={renderPasswordItem}
-                    ListEmptyComponent={() => (
-                        <EmptyState icon="shield-key-outline" title="No passwords yet" subtitle="Tap the plus button to start securing your credentials." />
-                    )}
-                    removeClippedSubviews={true}
-                    maxToRenderPerBatch={10}
-                    windowSize={5}
-                />
-            ) : (
-                <FlatList
-                    data={filteredNotes}
-                    keyExtractor={(item) => item._id}
-                    contentContainerStyle={filteredNotes.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
-                    renderItem={renderNoteItem}
-                    ListEmptyComponent={() => (
-                        <EmptyState icon="notebook-outline" title="No secure notes yet" subtitle="Capture your thoughts with encrypted journal entries." />
-                    )}
-                    removeClippedSubviews={true}
-                    maxToRenderPerBatch={10}
-                    windowSize={5}
-                />
-            )}
+                {activeSegment === 'passwords' ? (
+                    <FlatList
+                        data={filteredEntries}
+                        keyExtractor={(item) => item._id}
+                        contentContainerStyle={filteredEntries.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
+                        renderItem={renderPasswordItem}
+                        ListEmptyComponent={() => (
+                            <EmptyState icon="shield-key-outline" title="No passwords yet" subtitle="Tap the plus button to start securing your credentials." />
+                        )}
+                        removeClippedSubviews={true}
+                        maxToRenderPerBatch={10}
+                        windowSize={5}
+                    />
+                ) : (
+                    <FlatList
+                        data={filteredNotes}
+                        keyExtractor={(item) => item._id}
+                        contentContainerStyle={filteredNotes.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
+                        renderItem={renderNoteItem}
+                        ListEmptyComponent={() => (
+                            <EmptyState icon="notebook-outline" title="No secure notes yet" subtitle="Capture your thoughts with encrypted journal entries." />
+                        )}
+                        removeClippedSubviews={true}
+                        maxToRenderPerBatch={10}
+                        windowSize={5}
+                    />
+                )}
             </Animated.View>
 
             {/* FAB */}

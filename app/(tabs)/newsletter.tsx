@@ -177,19 +177,19 @@ export default function NewsletterScreen() {
                 </View>
             ) : (
                 <Animated.View style={[{ flex: 1 }, swipeAnimatedStyle]} {...swipePanHandlers}>
-                <FlatList
-                    data={displayedArticles}
-                    keyExtractor={(item, index) => `${item.url}-${index}`}
-                    contentContainerStyle={displayedArticles.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 40 }}
-                    renderItem={renderArticle}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
-                    ListEmptyComponent={() => (
-                        <EmptyState icon="newspaper-variant-outline" title="No news to show" subtitle="Pull to refresh or check back later." />
-                    )}
-                    removeClippedSubviews={true}
-                    maxToRenderPerBatch={8}
-                    windowSize={5}
-                />
+                    <FlatList
+                        data={displayedArticles}
+                        keyExtractor={(item, index) => `${item.url}-${index}`}
+                        contentContainerStyle={displayedArticles.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 40 }}
+                        renderItem={renderArticle}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
+                        ListEmptyComponent={() => (
+                            <EmptyState icon="newspaper-variant-outline" title="No news to show" subtitle="Pull to refresh or check back later." />
+                        )}
+                        removeClippedSubviews={true}
+                        maxToRenderPerBatch={8}
+                        windowSize={5}
+                    />
                 </Animated.View>
             )}
         </View>

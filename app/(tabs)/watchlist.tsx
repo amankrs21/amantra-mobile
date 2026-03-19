@@ -247,18 +247,18 @@ export default function WatchlistScreen() {
                 <View style={styles.loadingState}><ActivityIndicator size="large" color={colors.accent} /></View>
             ) : (
                 <Animated.View style={[{ flex: 1 }, swipeAnimatedStyle]} {...swipePanHandlers}>
-                <FlatList
-                    data={filteredItems}
-                    keyExtractor={(item) => item._id}
-                    contentContainerStyle={filteredItems.length === 0 ? styles.emptyList : { gap: 8, paddingBottom: 120 }}
-                    renderItem={renderItem}
-                    ListEmptyComponent={() => (
-                        <EmptyState icon="movie-open-outline" title="No items yet" subtitle="Tap + to start tracking movies & series." />
-                    )}
-                    removeClippedSubviews={true}
-                    maxToRenderPerBatch={10}
-                    windowSize={5}
-                />
+                    <FlatList
+                        data={filteredItems}
+                        keyExtractor={(item) => item._id}
+                        contentContainerStyle={filteredItems.length === 0 ? styles.emptyList : { gap: 8, paddingBottom: 120 }}
+                        renderItem={renderItem}
+                        ListEmptyComponent={() => (
+                            <EmptyState icon="movie-open-outline" title="No items yet" subtitle="Tap + to start tracking movies & series." />
+                        )}
+                        removeClippedSubviews={true}
+                        maxToRenderPerBatch={10}
+                        windowSize={5}
+                    />
                 </Animated.View>
             )}
 
