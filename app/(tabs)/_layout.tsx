@@ -2,7 +2,7 @@ import { Tabs, Redirect } from 'expo-router';
 import React, { useState, useCallback, useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -34,7 +34,7 @@ export default function TabLayout() {
     const key = await authenticateAndGetKey();
     if (key) {
       await setKey(key);
-      Toast.show({ type: 'success', text1: 'Unlocked with biometrics.' });
+      toast.success('Unlocked with biometrics.');
       setShowPinPrompt(false);
     }
   }, [authenticateAndGetKey, setKey]);
@@ -48,17 +48,17 @@ export default function TabLayout() {
         await api.post('/pin/verify', { key: encodeKey(candidate) });
         await setKey(candidate);
         await setEncryptionKeyConfigured(true);
-        Toast.show({ type: 'success', text1: 'Encryption key unlocked.' });
+        toast.success('Encryption key unlocked.');
         setShowPinPrompt(false);
 
         if (bioAvailable && !bioEnabled) {
           const enrolled = await enableBiometric(candidate);
           if (enrolled) {
-            Toast.show({ type: 'success', text1: 'Biometric unlock enabled!' });
+            toast.success('Biometric unlock enabled!');
           }
         }
       } catch {
-        Toast.show({ type: 'error', text1: 'Invalid encryption key.' });
+        toast.error('Invalid encryption key.');
       }
     },
     [bioAvailable, bioEnabled, enableBiometric, setEncryptionKeyConfigured, setKey],
