@@ -34,10 +34,7 @@ import { useLoading } from '@/hooks/use-loading';
 import { useSwipeFilter } from '@/hooks/use-swipe-filter';
 import api from '@/services/api';
 import {
-    type CategoryMapping,
     getCategoryDef,
-    getCategoryMapping,
-    setCategoryForEntry,
     VAULT_CATEGORIES,
     NOTES_CATEGORIES,
 } from '@/utils/categories';
@@ -48,11 +45,11 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 // ── Schemas ──
-const VaultEntrySchema = z.object({ _id: z.string(), title: z.string(), username: z.string(), updatedAt: z.string(), createdAt: z.string().optional() });
+const VaultEntrySchema = z.object({ _id: z.string(), title: z.string(), username: z.string(), updatedAt: z.string(), createdAt: z.string().optional(), category: z.string().nullable().optional() });
 type VaultEntry = z.infer<typeof VaultEntrySchema> & { password?: string };
 const VaultListSchema = z.array(VaultEntrySchema);
 
-const NoteSchema = z.object({ _id: z.string(), title: z.string(), updatedAt: z.string(), createdAt: z.string().optional() });
+const NoteSchema = z.object({ _id: z.string(), title: z.string(), updatedAt: z.string(), createdAt: z.string().optional(), category: z.string().nullable().optional() });
 type Note = z.infer<typeof NoteSchema> & { content?: string };
 const NoteListSchema = z.array(NoteSchema);
 
@@ -88,7 +85,6 @@ export default function VaultScreen() {
     const [revealedPasswords, setRevealedPasswords] = useState<Record<string, string>>({});
     const hideTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const [vaultCategoryFilter, setVaultCategoryFilter] = useState<string | null>(null);
-    const [vaultCategoryMap, setVaultCategoryMap] = useState<CategoryMapping>({});
     const [addVaultCategory, setAddVaultCategory] = useState<string | null>(null);
 
     // ── Notes state ──
@@ -99,7 +95,6 @@ export default function VaultScreen() {
     const [deleteNote, setDeleteNote] = useState<Note | null>(null);
     const [activeContent, setActiveContent] = useState<Record<string, string>>({});
     const [notesCategoryFilter, setNotesCategoryFilter] = useState<string | null>(null);
-    const [notesCategoryMap, setNotesCategoryMap] = useState<CategoryMapping>({});
     const [addNotesCategory, setAddNotesCategory] = useState<string | null>(null);
 
     // ── Swipe to cycle category filters ──
@@ -110,24 +105,20 @@ export default function VaultScreen() {
     const currentKeys = activeSegment === 'passwords' ? vaultSwipeKeys : notesSwipeKeys;
     const swipePanResponder = useSwipeFilter(currentKeys, currentFilter, currentSetter);
 
-    // ── Load categories ──
-    useEffect(() => { void getCategoryMapping('vault').then(setVaultCategoryMap); }, []);
-    useEffect(() => { void getCategoryMapping('notes').then(setNotesCategoryMap); }, []);
-
     // ── Filtered lists ──
     const filteredEntries = useMemo(() => {
         let result = entries;
         if (searchTerm.trim()) { const n = searchTerm.trim().toLowerCase(); result = result.filter((e) => e.title.toLowerCase().includes(n)); }
-        if (vaultCategoryFilter) result = result.filter((e) => vaultCategoryMap[e._id] === vaultCategoryFilter);
+        if (vaultCategoryFilter) result = result.filter((e) => e.category === vaultCategoryFilter);
         return result;
-    }, [entries, searchTerm, vaultCategoryFilter, vaultCategoryMap]);
+    }, [entries, searchTerm, vaultCategoryFilter]);
 
     const filteredNotes = useMemo(() => {
         let result = notes;
         if (searchTerm.trim()) { const n = searchTerm.trim().toLowerCase(); result = result.filter((note) => note.title.toLowerCase().includes(n)); }
-        if (notesCategoryFilter) result = result.filter((note) => notesCategoryMap[note._id] === notesCategoryFilter);
+        if (notesCategoryFilter) result = result.filter((note) => note.category === notesCategoryFilter);
         return result;
-    }, [notes, searchTerm, notesCategoryFilter, notesCategoryMap]);
+    }, [notes, searchTerm, notesCategoryFilter]);
 
     // ── Fetch data ──
     const fetchVault = useCallback(async () => {
@@ -173,18 +164,17 @@ export default function VaultScreen() {
         if (!encodedKey) { setPromptKey(true); toast.info('Enter your encryption PIN to continue.'); throw new Error('Encryption key required'); }
         showLoading('Saving password...');
         try {
-            const { data } = await api.post('/vault/add', { title, username, password, key: encodedKey });
+            await api.post('/vault/add', { title, username, password, key: encodedKey, category: addVaultCategory });
             toast.success('Password added successfully.');
-            if (addVaultCategory && data?._id) { await setCategoryForEntry('vault', data._id, addVaultCategory); setVaultCategoryMap((prev) => ({ ...prev, [data._id]: addVaultCategory })); }
             setAddVaultCategory(null); await fetchVault();
         } catch (error) { console.error('Add password failed', error); toast.error('Unable to add password.'); }
         finally { hideLoading(); }
     }, [addVaultCategory, encodedKey, fetchVault, hideLoading, showLoading]);
 
-    const handleUpdatePassword = useCallback(async ({ title, username, password }: { title: string; username: string; password: string }) => {
+    const handleUpdatePassword = useCallback(async ({ title, username, password, category }: { title: string; username: string; password: string; category?: string | null }) => {
         if (!encodedKey || !editEntry) { setPromptKey(true); return; }
         showLoading('Updating password...');
-        try { await api.patch('/vault/update', { id: editEntry._id, title, username, password, key: encodedKey }); toast.success('Password updated.'); setEditEntry(null); await fetchVault(); }
+        try { await api.patch('/vault/update', { id: editEntry._id, title, username, password, key: encodedKey, category: category ?? editEntry.category ?? null }); toast.success('Password updated.'); setEditEntry(null); await fetchVault(); }
         catch (error) { console.error('Update password failed', error); toast.error('Unable to update password.'); }
         finally { hideLoading(); }
     }, [editEntry, encodedKey, fetchVault, hideLoading, showLoading]);
@@ -221,8 +211,13 @@ export default function VaultScreen() {
     const handleCopy = useCallback(async (value: string, label: string) => { await Clipboard.setStringAsync(value); toast.success(`${label} copied to clipboard.`); }, []);
 
     const handleVaultCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
-        await setCategoryForEntry('vault', entryId, categoryKey);
-        setVaultCategoryMap((prev) => { const next = { ...prev }; if (categoryKey) next[entryId] = categoryKey; else delete next[entryId]; return next; });
+        try {
+            await api.patch('/vault/update', { id: entryId, category: categoryKey });
+            setEntries((prev) => prev.map((e) => e._id === entryId ? { ...e, category: categoryKey } : e));
+        } catch (error) {
+            console.error('Category update failed', error);
+            toast.error('Unable to update category.');
+        }
     }, []);
 
     // ── Notes CRUD ──
@@ -245,9 +240,8 @@ export default function VaultScreen() {
         if (!encodedKey) { setPromptKey(true); toast.info('Enter your encryption PIN to continue.'); throw new Error('Encryption key required'); }
         showLoading('Saving secure note...');
         try {
-            const { data } = await api.post('/journal/add', { title, content, key: encodedKey });
+            await api.post('/journal/add', { title, content, key: encodedKey, category: addNotesCategory });
             toast.success('Note saved securely.');
-            if (addNotesCategory && data?._id) { await setCategoryForEntry('notes', data._id, addNotesCategory); setNotesCategoryMap((prev) => ({ ...prev, [data._id]: addNotesCategory })); }
             setAddNotesCategory(null); await fetchNotes();
         } catch (error) { console.error('Add note failed', error); toast.error('Unable to add note.'); }
         finally { hideLoading(); }
@@ -261,11 +255,11 @@ export default function VaultScreen() {
         finally { hideLoading(); }
     }, [encodedKey, hideLoading, showLoading]);
 
-    const handleUpdateNote = useCallback(async ({ title, content }: { title: string; content: string }) => {
+    const handleUpdateNote = useCallback(async ({ title, content, category }: { title: string; content: string; category?: string | null }) => {
         if (!encodedKey || !editNote) { setPromptKey(true); return; }
         showLoading('Updating note...');
         try {
-            await api.patch('/journal/update', { id: editNote._id, title, content, key: encodedKey });
+            await api.patch('/journal/update', { id: editNote._id, title, content, key: encodedKey, category: category ?? editNote.category ?? null });
             toast.success('Note updated.'); setEditNote(null); await fetchNotes();
             setActiveContent((prev) => ({ ...prev, [editNote._id]: content }));
         } catch (error) { console.error('Update note failed', error); toast.error('Unable to update note.'); }
@@ -281,15 +275,19 @@ export default function VaultScreen() {
     }, [deleteNote, fetchNotes, hideLoading, showLoading]);
 
     const handleNotesCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
-        await setCategoryForEntry('notes', entryId, categoryKey);
-        setNotesCategoryMap((prev) => { const next = { ...prev }; if (categoryKey) next[entryId] = categoryKey; else delete next[entryId]; return next; });
+        try {
+            await api.patch('/journal/update', { id: entryId, category: categoryKey });
+            setNotes((prev) => prev.map((n) => n._id === entryId ? { ...n, category: categoryKey } : n));
+        } catch (error) {
+            console.error('Category update failed', error);
+            toast.error('Unable to update category.');
+        }
     }, []);
 
     // ── Render items ──
     const renderPasswordItem = useCallback(({ item }: { item: VaultEntry }) => {
         const revealed = revealedPasswords[item._id];
-        const catKey = vaultCategoryMap[item._id];
-        const catDef = catKey ? getCategoryDef('vault', catKey) : undefined;
+        const catDef = item.category ? getCategoryDef('vault', item.category) : undefined;
         return (
             <View style={styles.itemCard}>
                 {/* Left: icon circle */}
@@ -330,13 +328,12 @@ export default function VaultScreen() {
                 </View>
             </View>
         );
-    }, [colors, handleCopy, handlePrepareEditPassword, handleReveal, revealedPasswords, styles, vaultCategoryMap]);
+    }, [colors, handleCopy, handlePrepareEditPassword, handleReveal, revealedPasswords, styles]);
 
     const renderNoteItem = useCallback(({ item }: { item: Note }) => {
         const expanded = expandedId === item._id;
         const content = expanded ? activeContent[item._id] ?? 'Decrypting…' : undefined;
-        const catKey = notesCategoryMap[item._id];
-        const catDef = catKey ? getCategoryDef('notes', catKey) : undefined;
+        const catDef = item.category ? getCategoryDef('notes', item.category) : undefined;
         return (
             <View style={styles.noteCard}>
                 <Pressable style={styles.noteHeader} onPress={() => toggleExpand(item)}>
@@ -362,7 +359,7 @@ export default function VaultScreen() {
                 ) : null}
             </View>
         );
-    }, [activeContent, colors, expandedId, handlePrepareEditNote, notesCategoryMap, styles, toggleExpand]);
+    }, [activeContent, colors, expandedId, handlePrepareEditNote, styles, toggleExpand]);
 
     // ── Segment indicator position ──
     const segmentWidth = useRef(0);
@@ -436,12 +433,12 @@ export default function VaultScreen() {
 
             {/* Password modals */}
             <VaultFormModal visible={isAddVisible} mode="create" onClose={() => { setAddVisible(false); setAddVaultCategory(null); }} onSubmit={handleAddPassword} categoryKey={addVaultCategory} onCategoryChange={setAddVaultCategory} categories={VAULT_CATEGORIES} />
-            {editEntry ? (<VaultFormModal visible mode="edit" initialValues={{ title: editEntry.title, username: editEntry.username, password: editEntry.password ?? '' }} onClose={() => setEditEntry(null)} onSubmit={handleUpdatePassword} categoryKey={vaultCategoryMap[editEntry._id] ?? null} onCategoryChange={(key) => handleVaultCategoryChange(editEntry._id, key)} categories={VAULT_CATEGORIES} />) : null}
+            {editEntry ? (<VaultFormModal visible mode="edit" initialValues={{ title: editEntry.title, username: editEntry.username, password: editEntry.password ?? '' }} onClose={() => setEditEntry(null)} onSubmit={handleUpdatePassword} categoryKey={editEntry.category ?? null} onCategoryChange={(key) => handleVaultCategoryChange(editEntry._id, key)} categories={VAULT_CATEGORIES} />) : null}
             {deleteEntry ? (<VaultDeleteModal visible title={deleteEntry.title} onClose={() => setDeleteEntry(null)} onConfirm={handleDeletePassword} />) : null}
 
             {/* Note modals */}
             <NoteFormModal visible={noteAddVisible} mode="create" onClose={() => { setNoteAddVisible(false); setAddNotesCategory(null); }} onSubmit={handleAddNote} categoryKey={addNotesCategory} onCategoryChange={setAddNotesCategory} categories={NOTES_CATEGORIES} />
-            {editNote ? (<NoteFormModal visible mode="edit" initialValues={{ title: editNote.title, content: editNote.content ?? '' }} onClose={() => setEditNote(null)} onSubmit={handleUpdateNote} categoryKey={notesCategoryMap[editNote._id] ?? null} onCategoryChange={(key) => handleNotesCategoryChange(editNote._id, key)} categories={NOTES_CATEGORIES} />) : null}
+            {editNote ? (<NoteFormModal visible mode="edit" initialValues={{ title: editNote.title, content: editNote.content ?? '' }} onClose={() => setEditNote(null)} onSubmit={handleUpdateNote} categoryKey={editNote.category ?? null} onCategoryChange={(key) => handleNotesCategoryChange(editNote._id, key)} categories={NOTES_CATEGORIES} />) : null}
             {deleteNote ? (<NoteDeleteModal visible title={deleteNote.title} onClose={() => setDeleteNote(null)} onConfirm={handleDeleteNote} />) : null}
 
             {/* Encryption key modal */}

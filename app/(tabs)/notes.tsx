@@ -28,11 +28,8 @@ import { useEncryptionKey } from '@/hooks/use-encryption-key';
 import { useLoading } from '@/hooks/use-loading';
 import api from '@/services/api';
 import {
-    type CategoryMapping,
     getCategoryDef,
-    getCategoryMapping,
     NOTES_CATEGORIES,
-    setCategoryForEntry,
 } from '@/utils/categories';
 import { decodeKey, encodeKey } from '@/utils/crypto';
 
@@ -40,7 +37,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const NoteSchema = z.object({ _id: z.string(), title: z.string(), updatedAt: z.string(), createdAt: z.string().optional() });
+const NoteSchema = z.object({ _id: z.string(), title: z.string(), updatedAt: z.string(), createdAt: z.string().optional(), category: z.string().nullable().optional() });
 type Note = z.infer<typeof NoteSchema> & { content?: string };
 const NoteListSchema = z.array(NoteSchema);
 
@@ -62,17 +59,14 @@ export default function NotesScreen() {
     const [promptKey, setPromptKey] = useState(false);
     const [activeContent, setActiveContent] = useState<Record<string, string>>({});
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-    const [categoryMap, setCategoryMap] = useState<CategoryMapping>({});
     const [addCategory, setAddCategory] = useState<string | null>(null);
-
-    useEffect(() => { void getCategoryMapping('notes').then(setCategoryMap); }, []);
 
     const filteredNotes = useMemo(() => {
         let result = notes;
         if (searchTerm.trim()) { const n = searchTerm.trim().toLowerCase(); result = result.filter((note) => note.title.toLowerCase().includes(n)); }
-        if (categoryFilter) result = result.filter((note) => categoryMap[note._id] === categoryFilter);
+        if (categoryFilter) result = result.filter((note) => note.category === categoryFilter);
         return result;
-    }, [notes, searchTerm, categoryFilter, categoryMap]);
+    }, [notes, searchTerm, categoryFilter]);
 
     const fetchNotes = useCallback(async () => {
         showLoading('Loading encrypted notes...');
@@ -120,9 +114,8 @@ export default function NotesScreen() {
         if (!encodedKey) { setPromptKey(true); toast.info('Enter your encryption PIN to continue.'); throw new Error('Encryption key required'); }
         showLoading('Saving secure note...');
         try {
-            const { data } = await api.post('/journal/add', { title, content, key: encodedKey });
+            await api.post('/journal/add', { title, content, key: encodedKey, category: addCategory });
             toast.success('Note saved securely.');
-            if (addCategory && data?._id) { await setCategoryForEntry('notes', data._id, addCategory); setCategoryMap((prev) => ({ ...prev, [data._id]: addCategory })); }
             setAddCategory(null); await fetchNotes();
         } catch (error) { console.error('Add note failed', error); toast.error('Unable to add note.'); }
         finally { hideLoading(); }
@@ -136,11 +129,11 @@ export default function NotesScreen() {
         finally { hideLoading(); }
     }, [encodedKey, hideLoading, showLoading]);
 
-    const handleUpdate = useCallback(async ({ title, content }: { title: string; content: string }) => {
+    const handleUpdate = useCallback(async ({ title, content, category }: { title: string; content: string; category?: string | null }) => {
         if (!encodedKey || !editNote) { setPromptKey(true); return; }
         showLoading('Updating note...');
         try {
-            await api.patch('/journal/update', { id: editNote._id, title, content, key: encodedKey });
+            await api.patch('/journal/update', { id: editNote._id, title, content, key: encodedKey, category: category ?? editNote.category ?? null });
             toast.success('Note updated.'); setEditNote(null); await fetchNotes();
             setActiveContent((prev) => ({ ...prev, [editNote._id]: content }));
         } catch (error) { console.error('Update note failed', error); toast.error('Unable to update note.'); }
@@ -156,15 +149,19 @@ export default function NotesScreen() {
     }, [deleteNote, fetchNotes, hideLoading, showLoading]);
 
     const handleCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
-        await setCategoryForEntry('notes', entryId, categoryKey);
-        setCategoryMap((prev) => { const next = { ...prev }; if (categoryKey) next[entryId] = categoryKey; else delete next[entryId]; return next; });
+        try {
+            await api.patch('/journal/update', { id: entryId, category: categoryKey });
+            setNotes((prev) => prev.map((n) => n._id === entryId ? { ...n, category: categoryKey } : n));
+        } catch (error) {
+            console.error('Category update failed', error);
+            toast.error('Unable to update category.');
+        }
     }, []);
 
     const renderItem = ({ item }: { item: Note }) => {
         const expanded = expandedId === item._id;
         const content = expanded ? activeContent[item._id] ?? 'Decrypting…' : undefined;
-        const catKey = categoryMap[item._id];
-        const catDef = catKey ? getCategoryDef('notes', catKey) : undefined;
+        const catDef = item.category ? getCategoryDef('notes', item.category) : undefined;
         return (
             <View style={styles.noteCard}>
                 <Pressable style={styles.noteHeader} onPress={() => toggleExpand(item)}>
@@ -234,7 +231,7 @@ export default function NotesScreen() {
             </Pressable>
 
             <NoteFormModal visible={addVisible} mode="create" onClose={() => { setAddVisible(false); setAddCategory(null); }} onSubmit={handleAdd} categoryKey={addCategory} onCategoryChange={setAddCategory} categories={NOTES_CATEGORIES} />
-            {editNote ? (<NoteFormModal visible mode="edit" initialValues={{ title: editNote.title, content: editNote.content ?? '' }} onClose={() => setEditNote(null)} onSubmit={handleUpdate} categoryKey={categoryMap[editNote._id] ?? null} onCategoryChange={(key) => handleCategoryChange(editNote._id, key)} categories={NOTES_CATEGORIES} />) : null}
+            {editNote ? (<NoteFormModal visible mode="edit" initialValues={{ title: editNote.title, content: editNote.content ?? '' }} onClose={() => setEditNote(null)} onSubmit={handleUpdate} categoryKey={editNote.category ?? null} onCategoryChange={(key) => handleCategoryChange(editNote._id, key)} categories={NOTES_CATEGORIES} />) : null}
             {deleteNote ? (<NoteDeleteModal visible title={deleteNote.title} onClose={() => setDeleteNote(null)} onConfirm={handleDelete} />) : null}
             <EncryptionKeyModal visible={promptKey && isKeyHydrated} onClose={() => setPromptKey(false)} onConfirm={handleKeySubmit} caption={encryptionKeyConfigured ? 'Re-enter your encryption PIN to reveal notes.' : 'Set your encryption PIN to unlock notes.'} biometricAvailable={bioAvailable && bioEnabled} onBiometric={handleBiometricUnlock} />
         </View>
