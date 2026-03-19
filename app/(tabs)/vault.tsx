@@ -3,12 +3,10 @@ import {
     Animated,
     FlatList,
     LayoutAnimation,
-    PanResponder,
     Platform,
     Pressable,
     StyleSheet,
     Text,
-    TextInput,
     UIManager,
     View,
 } from 'react-native';
@@ -25,12 +23,15 @@ import NoteDeleteModal from '@/components/notes/NoteDeleteModal';
 import NoteFormModal from '@/components/notes/NoteFormModal';
 import CategoryBadge from '@/components/ui/CategoryBadge';
 import CategoryFilterBar from '@/components/ui/CategoryFilterBar';
+import EmptyState from '@/components/ui/EmptyState';
+import SearchBar from '@/components/ui/SearchBar';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { ThemeColors } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useBiometric } from '@/hooks/use-biometric';
 import { useEncryptionKey } from '@/hooks/use-encryption-key';
 import { useLoading } from '@/hooks/use-loading';
+import { useSwipeFilter } from '@/hooks/use-swipe-filter';
 import api from '@/services/api';
 import {
     type CategoryMapping,
@@ -102,19 +103,12 @@ export default function VaultScreen() {
     const [addNotesCategory, setAddNotesCategory] = useState<string | null>(null);
 
     // ── Swipe to cycle category filters ──
-    const swipePanResponder = useMemo(() => PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 20,
-        onPanResponderRelease: (_, gs) => {
-            if (Math.abs(gs.dx) < 50 || Math.abs(gs.dx) < Math.abs(gs.dy)) return;
-            const cats = activeSegment === 'passwords' ? VAULT_CATEGORIES : NOTES_CATEGORIES;
-            const keys: (string | null)[] = [null, ...cats.map((c) => c.key)];
-            const currentFilter = activeSegment === 'passwords' ? vaultCategoryFilter : notesCategoryFilter;
-            const setter = activeSegment === 'passwords' ? setVaultCategoryFilter : setNotesCategoryFilter;
-            const idx = keys.indexOf(currentFilter);
-            if (gs.dx < -50 && idx < keys.length - 1) setter(keys[idx + 1]);
-            else if (gs.dx > 50 && idx > 0) setter(keys[idx - 1]);
-        },
-    }), [activeSegment, vaultCategoryFilter, notesCategoryFilter]);
+    const vaultSwipeKeys = useMemo(() => [null, ...VAULT_CATEGORIES.map((c) => c.key)] as (string | null)[], []);
+    const notesSwipeKeys = useMemo(() => [null, ...NOTES_CATEGORIES.map((c) => c.key)] as (string | null)[], []);
+    const currentFilter = activeSegment === 'passwords' ? vaultCategoryFilter : notesCategoryFilter;
+    const currentSetter = activeSegment === 'passwords' ? setVaultCategoryFilter : setNotesCategoryFilter;
+    const currentKeys = activeSegment === 'passwords' ? vaultSwipeKeys : notesSwipeKeys;
+    const swipePanResponder = useSwipeFilter(currentKeys, currentFilter, currentSetter);
 
     // ── Load categories ──
     useEffect(() => { void getCategoryMapping('vault').then(setVaultCategoryMap); }, []);
@@ -391,21 +385,11 @@ export default function VaultScreen() {
             </View>
 
             {/* Search bar */}
-            <View style={styles.searchRow}>
-                <MaterialCommunityIcons name="magnify" size={20} color={colors.placeholder} />
-                <TextInput
-                    placeholder={activeSegment === 'passwords' ? 'Search by title' : 'Search notes by title'}
-                    placeholderTextColor={colors.placeholder}
-                    style={styles.searchInput}
-                    value={searchTerm}
-                    onChangeText={setSearchTerm}
-                />
-                {searchTerm ? (
-                    <Pressable style={styles.clearButton} onPress={() => setSearchTerm('')}>
-                        <MaterialCommunityIcons name="close" size={18} color={colors.textSecondary} />
-                    </Pressable>
-                ) : null}
-            </View>
+            <SearchBar
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                placeholder={activeSegment === 'passwords' ? 'Search by title' : 'Search notes by title'}
+            />
 
             {/* Category filter */}
             {activeSegment === 'passwords' ? (
@@ -423,11 +407,7 @@ export default function VaultScreen() {
                     contentContainerStyle={filteredEntries.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
                     renderItem={renderPasswordItem}
                     ListEmptyComponent={() => (
-                        <View style={styles.emptyState}>
-                            <MaterialCommunityIcons name="shield-key-outline" size={48} color={colors.textTertiary} />
-                            <Text style={styles.emptyTitle}>No passwords yet</Text>
-                            <Text style={styles.emptySubtitle}>Tap the plus button to start securing your credentials.</Text>
-                        </View>
+                        <EmptyState icon="shield-key-outline" title="No passwords yet" subtitle="Tap the plus button to start securing your credentials." />
                     )}
                     removeClippedSubviews={true}
                     maxToRenderPerBatch={10}
@@ -440,11 +420,7 @@ export default function VaultScreen() {
                     contentContainerStyle={filteredNotes.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 120 }}
                     renderItem={renderNoteItem}
                     ListEmptyComponent={() => (
-                        <View style={styles.emptyState}>
-                            <MaterialCommunityIcons name="notebook-outline" size={48} color={colors.textTertiary} />
-                            <Text style={styles.emptyTitle}>No secure notes yet</Text>
-                            <Text style={styles.emptySubtitle}>Capture your thoughts with encrypted journal entries.</Text>
-                        </View>
+                        <EmptyState icon="notebook-outline" title="No secure notes yet" subtitle="Capture your thoughts with encrypted journal entries." />
                     )}
                     removeClippedSubviews={true}
                     maxToRenderPerBatch={10}
@@ -486,11 +462,6 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     segmentLabel: { fontSize: 15, fontWeight: '600', color: c.textSecondary },
     segmentLabelActive: { color: '#ffffff', fontWeight: '700' },
 
-    // Search
-    searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, gap: 10, marginBottom: 12, borderWidth: 1, borderColor: c.border },
-    searchInput: { flex: 1, fontSize: 16, color: c.text },
-    clearButton: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: c.cancelBg },
-
     // Password items
     itemCard: { backgroundColor: c.surfaceSolid, borderRadius: 18, padding: 14, flexDirection: 'row', gap: 12, alignItems: 'center', borderWidth: 1, borderColor: c.border },
     itemIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: `${c.accent}15`, alignItems: 'center', justifyContent: 'center' },
@@ -519,8 +490,5 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
 
     // Shared
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-    emptyState: { alignItems: 'center', gap: 8, paddingTop: 48 },
-    emptyTitle: { fontSize: 18, fontWeight: '600', color: c.text },
-    emptySubtitle: { fontSize: 14, color: c.textSecondary, textAlign: 'center', paddingHorizontal: 32 },
     fab: { position: 'absolute', right: 24, bottom: 32, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: c.fab, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 },
 });

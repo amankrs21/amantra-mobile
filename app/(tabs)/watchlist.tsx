@@ -2,12 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
-    PanResponder,
     Pressable,
-    ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,6 +14,9 @@ import { toast } from 'sonner-native';
 import WatchlistFormModal from '@/components/watchlist/WatchlistFormModal';
 import WatchlistDeleteModal from '@/components/watchlist/WatchlistDeleteModal';
 import CategoryFilterBar from '@/components/ui/CategoryFilterBar';
+import EmptyState from '@/components/ui/EmptyState';
+import SearchBar from '@/components/ui/SearchBar';
+import { useSwipeFilter } from '@/hooks/use-swipe-filter';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { ThemeColors } from '@/constants/theme';
 import { useLoading } from '@/hooks/use-loading';
@@ -60,16 +60,8 @@ export default function WatchlistScreen() {
     const [deleteItem, setDeleteItem] = useState<WatchlistItem | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    const swipePanResponder = useMemo(() => PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 20,
-        onPanResponderRelease: (_, gs) => {
-            if (Math.abs(gs.dx) < 50 || Math.abs(gs.dx) < Math.abs(gs.dy)) return;
-            const keys: (string | null)[] = [null, ...WATCHLIST_CATEGORIES.map((c) => c.key)];
-            const idx = keys.indexOf(categoryFilter);
-            if (gs.dx < -50 && idx < keys.length - 1) setCategoryFilter(keys[idx + 1]);
-            else if (gs.dx > 50 && idx > 0) setCategoryFilter(keys[idx - 1]);
-        },
-    }), [categoryFilter]);
+    const swipeKeys = useMemo(() => [null, ...WATCHLIST_CATEGORIES.map((c) => c.key)] as (string | null)[], []);
+    const swipePanResponder = useSwipeFilter(swipeKeys, categoryFilter, setCategoryFilter);
 
     const filteredItems = useMemo(() => {
         let result = items;
@@ -237,21 +229,7 @@ export default function WatchlistScreen() {
             <Text style={styles.headerSubtitle}>Track movies & series you want to watch.</Text>
 
             {/* Search bar — matches Vault */}
-            <View style={styles.searchRow}>
-                <MaterialCommunityIcons name="magnify" size={20} color={colors.placeholder} />
-                <TextInput
-                    placeholder="Search by title"
-                    placeholderTextColor={colors.placeholder}
-                    style={styles.searchInput}
-                    value={searchTerm}
-                    onChangeText={setSearchTerm}
-                />
-                {searchTerm ? (
-                    <Pressable style={styles.clearButton} onPress={() => setSearchTerm('')}>
-                        <MaterialCommunityIcons name="close" size={18} color={colors.textSecondary} />
-                    </Pressable>
-                ) : null}
-            </View>
+            <SearchBar value={searchTerm} onChangeText={setSearchTerm} />
 
             {/* Category filter — same component as Vault */}
             <CategoryFilterBar categories={WATCHLIST_CATEGORIES as any} selected={categoryFilter} onSelect={setCategoryFilter} />
@@ -277,11 +255,7 @@ export default function WatchlistScreen() {
                     contentContainerStyle={filteredItems.length === 0 ? styles.emptyList : { gap: 8, paddingBottom: 120 }}
                     renderItem={renderItem}
                     ListEmptyComponent={() => (
-                        <View style={styles.emptyState}>
-                            <MaterialCommunityIcons name="movie-open-outline" size={48} color={colors.textTertiary} />
-                            <Text style={styles.emptyTitle}>No items yet</Text>
-                            <Text style={styles.emptySubtitle}>Tap + to start tracking movies & series.</Text>
-                        </View>
+                        <EmptyState icon="movie-open-outline" title="No items yet" subtitle="Tap + to start tracking movies & series." />
                     )}
                     removeClippedSubviews={true}
                     maxToRenderPerBatch={10}
@@ -305,9 +279,6 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20, paddingTop: 4 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: 2 },
     headerSubtitle: { fontSize: 14, color: c.textSecondary, marginBottom: 12 },
-    searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceSolid, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, gap: 10, marginBottom: 12, borderWidth: 1, borderColor: c.border },
-    searchInput: { flex: 1, fontSize: 16, color: c.text },
-    clearButton: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: c.cancelBg },
     hideWatchedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
     hideWatchedLabel: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
     hideWatchedCount: { fontSize: 12, color: c.textTertiary },
@@ -333,8 +304,5 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     cardActions: { gap: 10, alignItems: 'center' },
     loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyList: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-    emptyState: { alignItems: 'center', gap: 8, paddingTop: 48 },
-    emptyTitle: { fontSize: 18, fontWeight: '600', color: c.text },
-    emptySubtitle: { fontSize: 14, color: c.textSecondary, textAlign: 'center' },
     fab: { position: 'absolute', right: 24, bottom: 32, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: c.fab, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 },
 });
