@@ -55,7 +55,6 @@ export default function PasswordsScreen() {
     const [revealedPasswords, setRevealedPasswords] = useState<Record<string, string>>({});
     const hideTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-    const [addCategory, setAddCategory] = useState<string | null>(null);
 
     const filteredEntries = useMemo(() => {
         let result = entries;
@@ -115,19 +114,18 @@ export default function PasswordsScreen() {
         } finally { hideLoading(); }
     }, [bioAvailable, bioEnabled, enableBiometric, hideLoading, setEncryptionKeyConfigured, setKey, showLoading]);
 
-    const handleAdd = useCallback(async ({ title, username, password }: { title: string; username: string; password: string }) => {
+    const handleAdd = useCallback(async ({ title, username, password, category }: { title: string; username: string; password: string; category?: string | null }) => {
         if (!encodedKey) { setPromptKey(true); toast.info('Enter your encryption PIN to continue.'); throw new Error('Encryption key required'); }
         showLoading('Saving password...');
         try {
-            await api.post('/vault/add', { title, username, password, key: encodedKey, category: addCategory });
+            await api.post('/vault/add', { title, username, password, key: encodedKey, category });
             toast.success('Password added successfully.');
-            setAddCategory(null);
             await fetchVault();
         } catch (error) {
             console.error('Add password failed', error);
             toast.error('Unable to add password', { description: error instanceof Error ? error.message : 'Please try again later.' });
         } finally { hideLoading(); }
-    }, [addCategory, encodedKey, fetchVault, hideLoading, showLoading]);
+    }, [encodedKey, fetchVault, hideLoading, showLoading]);
 
     const handleUpdate = useCallback(async ({ title, username, password, category }: { title: string; username: string; password: string; category?: string | null }) => {
         if (!encodedKey || !editEntry) { setPromptKey(true); return; }
@@ -191,16 +189,6 @@ export default function PasswordsScreen() {
     const handleCopy = useCallback(async (value: string, label: string) => {
         await Clipboard.setStringAsync(value);
         toast.success(`${label} copied to clipboard.`);
-    }, []);
-
-    const handleCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
-        try {
-            await api.patch('/vault/update', { id: entryId, category: categoryKey });
-            setEntries((prev) => prev.map((e) => e._id === entryId ? { ...e, category: categoryKey } : e));
-        } catch (error) {
-            console.error('Category update failed', error);
-            toast.error('Unable to update category.');
-        }
     }, []);
 
     const renderItem = ({ item }: { item: VaultEntry }) => {
@@ -281,8 +269,8 @@ export default function PasswordsScreen() {
                 <MaterialCommunityIcons name="plus" size={26} color={colors.fabIcon} />
             </Pressable>
 
-            <VaultFormModal visible={isAddVisible} mode="create" onClose={() => { setAddVisible(false); setAddCategory(null); }} onSubmit={handleAdd} categoryKey={addCategory} onCategoryChange={setAddCategory} categories={VAULT_CATEGORIES} />
-            {editEntry ? (<VaultFormModal visible mode="edit" initialValues={{ title: editEntry.title, username: editEntry.username, password: editEntry.password ?? '' }} onClose={() => setEditEntry(null)} onSubmit={handleUpdate} categoryKey={editEntry.category ?? null} onCategoryChange={(key) => handleCategoryChange(editEntry._id, key)} categories={VAULT_CATEGORIES} />) : null}
+            <VaultFormModal visible={isAddVisible} mode="create" onClose={() => setAddVisible(false)} onSubmit={handleAdd} categories={VAULT_CATEGORIES} />
+            {editEntry ? (<VaultFormModal visible mode="edit" initialValues={{ title: editEntry.title, username: editEntry.username, password: editEntry.password ?? '' }} onClose={() => setEditEntry(null)} onSubmit={handleUpdate} categoryKey={editEntry.category ?? null} categories={VAULT_CATEGORIES} />) : null}
             {deleteEntry ? (<VaultDeleteModal visible title={deleteEntry.title} onClose={() => setDeleteEntry(null)} onConfirm={handleDelete} />) : null}
             <EncryptionKeyModal visible={promptKey && isKeyHydrated} onClose={() => setPromptKey(false)} onConfirm={handleKeySubmit} caption={encryptionKeyConfigured ? 'Re-enter your encryption PIN to continue.' : 'Set your encryption PIN to unlock passwords.'} biometricAvailable={bioAvailable && bioEnabled} onBiometric={handleBiometricUnlock} />
         </View>

@@ -59,7 +59,6 @@ export default function NotesScreen() {
     const [promptKey, setPromptKey] = useState(false);
     const [activeContent, setActiveContent] = useState<Record<string, string>>({});
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-    const [addCategory, setAddCategory] = useState<string | null>(null);
 
     const filteredNotes = useMemo(() => {
         let result = notes;
@@ -110,16 +109,16 @@ export default function NotesScreen() {
         if (!activeContent[note._id]) void decryptNote(note._id);
     }, [activeContent, decryptNote, expandedId]);
 
-    const handleAdd = useCallback(async ({ title, content }: { title: string; content: string }) => {
+    const handleAdd = useCallback(async ({ title, content, category }: { title: string; content: string; category?: string | null }) => {
         if (!encodedKey) { setPromptKey(true); toast.info('Enter your encryption PIN to continue.'); throw new Error('Encryption key required'); }
         showLoading('Saving secure note...');
         try {
-            await api.post('/journal/add', { title, content, key: encodedKey, category: addCategory });
+            await api.post('/journal/add', { title, content, key: encodedKey, category });
             toast.success('Note saved securely.');
-            setAddCategory(null); await fetchNotes();
+            await fetchNotes();
         } catch (error) { console.error('Add note failed', error); toast.error('Unable to add note.'); }
         finally { hideLoading(); }
-    }, [addCategory, encodedKey, fetchNotes, hideLoading, showLoading]);
+    }, [encodedKey, fetchNotes, hideLoading, showLoading]);
 
     const handlePrepareEdit = useCallback(async (note: Note) => {
         if (!encodedKey) { setPromptKey(true); return; }
@@ -147,16 +146,6 @@ export default function NotesScreen() {
         catch (error) { console.error('Delete note failed', error); toast.error('Unable to delete note.'); }
         finally { hideLoading(); }
     }, [deleteNote, fetchNotes, hideLoading, showLoading]);
-
-    const handleCategoryChange = useCallback(async (entryId: string, categoryKey: string | null) => {
-        try {
-            await api.patch('/journal/update', { id: entryId, category: categoryKey });
-            setNotes((prev) => prev.map((n) => n._id === entryId ? { ...n, category: categoryKey } : n));
-        } catch (error) {
-            console.error('Category update failed', error);
-            toast.error('Unable to update category.');
-        }
-    }, []);
 
     const renderItem = ({ item }: { item: Note }) => {
         const expanded = expandedId === item._id;
@@ -230,8 +219,8 @@ export default function NotesScreen() {
                 <MaterialCommunityIcons name="plus" size={26} color={colors.fabIcon} />
             </Pressable>
 
-            <NoteFormModal visible={addVisible} mode="create" onClose={() => { setAddVisible(false); setAddCategory(null); }} onSubmit={handleAdd} categoryKey={addCategory} onCategoryChange={setAddCategory} categories={NOTES_CATEGORIES} />
-            {editNote ? (<NoteFormModal visible mode="edit" initialValues={{ title: editNote.title, content: editNote.content ?? '' }} onClose={() => setEditNote(null)} onSubmit={handleUpdate} categoryKey={editNote.category ?? null} onCategoryChange={(key) => handleCategoryChange(editNote._id, key)} categories={NOTES_CATEGORIES} />) : null}
+            <NoteFormModal visible={addVisible} mode="create" onClose={() => setAddVisible(false)} onSubmit={handleAdd} categories={NOTES_CATEGORIES} />
+            {editNote ? (<NoteFormModal visible mode="edit" initialValues={{ title: editNote.title, content: editNote.content ?? '' }} onClose={() => setEditNote(null)} onSubmit={handleUpdate} categoryKey={editNote.category ?? null} categories={NOTES_CATEGORIES} />) : null}
             {deleteNote ? (<NoteDeleteModal visible title={deleteNote.title} onClose={() => setDeleteNote(null)} onConfirm={handleDelete} />) : null}
             <EncryptionKeyModal visible={promptKey && isKeyHydrated} onClose={() => setPromptKey(false)} onConfirm={handleKeySubmit} caption={encryptionKeyConfigured ? 'Re-enter your encryption PIN to reveal notes.' : 'Set your encryption PIN to unlock notes.'} biometricAvailable={bioAvailable && bioEnabled} onBiometric={handleBiometricUnlock} />
         </View>
