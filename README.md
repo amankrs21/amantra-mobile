@@ -1,50 +1,116 @@
-# Welcome to your Expo app 👋
+# Amantra
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A secure, encrypted password vault & notes app built with React Native and Expo.
 
-## Get started
+Amantra lets you store passwords and private notes with end-to-end encryption that you control. Available on Android and iOS.
 
-1. Install dependencies
+## Tech Stack
 
-   ```bash
-   npm install
-   ```
+- **Expo SDK 54** with New Architecture enabled
+- **React Native** with TypeScript
+- **expo-router** for file-based navigation (typed routes)
+- **expo-secure-store** for secure local storage
+- **Google Sign-In** & email/password authentication
+- **EAS Build** for cloud & local builds
 
-2. Start the app
+## Prerequisites
 
-   ```bash
-   npx expo start
-   ```
+- [Node.js](https://nodejs.org/) >= 18
+- npm
+- [Expo CLI](https://docs.expo.dev/get-started/installation/) (`npx expo`)
+- [EAS CLI](https://docs.expo.dev/build/introduction/) (`npm install -g eas-cli`) — for builds
+- [Android Studio](https://developer.android.com/studio) — for local Android builds & emulator
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Getting Started
 
 ```bash
-npm run reset-project
+# Clone the repo
+git clone https://github.com/amankrs21/amantra-mobile.git
+cd amantra-mobile
+
+# Install dependencies
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Environment Variables
 
-## Learn more
+Create a `.env` file in the project root:
 
-To learn more about developing your project with Expo, look at the following resources:
+```env
+EXPO_PUBLIC_API_URL=https://your-api-url.com
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your-google-web-client-id
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your-google-ios-client-id
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Development
 
-## Join the community
+```bash
+# Start the dev server
+npx expo start
 
-Join our community of developers creating universal apps.
+# Run on Android emulator
+npx expo run:android
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Run on iOS simulator (macOS only)
+npx expo run:ios
+```
+
+## Building Production APK Locally
+
+1. Install EAS CLI:
+   ```bash
+   npm install -g eas-cli
+   ```
+
+2. Login to your Expo account:
+   ```bash
+   eas login
+   ```
+
+3. Build the APK locally:
+   ```bash
+   eas build -p android --profile production --local
+   ```
+
+4. The `.apk` file will be output in the project root.
+
+5. **Alternative** (requires Android Studio & SDK setup):
+   ```bash
+   npx expo run:android --variant release
+   ```
+
+## Building for iOS
+
+> Requires macOS with Xcode installed.
+
+1. Build locally:
+   ```bash
+   eas build -p ios --profile production --local
+   ```
+
+2. Or build in the cloud:
+   ```bash
+   eas build -p ios --profile production
+   ```
+
+3. Submit to App Store:
+   ```bash
+   eas submit -p ios
+   ```
+
+## CI/CD Pipeline
+
+This project uses **GitHub Actions** (`.github/workflows/ci.yml`):
+
+- **On Pull Request to `main`**: Runs linting, type-checking, and SonarCloud analysis.
+- **On merge to `main`**: Builds Android and iOS production builds via EAS.
+
+Required repository secrets:
+- `EXPO_TOKEN` — Expo access token for EAS builds
+- `SONAR_TOKEN` — SonarCloud token for code analysis
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
+
+Copyright 2025 Aman Kumar.
