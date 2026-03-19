@@ -9,7 +9,9 @@ export type AuthUser = {
     email: string;
     avatarUrl?: string | null;
     dateOfBirth?: string | null;
-    secretAnswer?: string | null;
+    weatherCity?: string | null;
+    isVerified?: boolean;
+    createdAt?: string;
 };
 
 export type AuthSessionPayload = {
@@ -33,6 +35,8 @@ type AuthContextValue = {
 const AUTH_TOKEN_KEY = 'securevault:token';
 const AUTH_USER_KEY = 'securevault:user';
 const AUTH_KEY_FLAG = 'securevault:key-configured';
+const ENCRYPTION_KEY = 'securevault:ekey';
+const BIOMETRIC_ENABLED_KEY = 'securevault.biometric-enabled';
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -101,7 +105,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setKeyConfigured(false);
         setAuthToken(null);
 
-        await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_USER_KEY, AUTH_KEY_FLAG]);
+        // Clear ALL user data from storage — encryption key, biometric flag, auth tokens
+        await AsyncStorage.multiRemove([
+            AUTH_TOKEN_KEY,
+            AUTH_USER_KEY,
+            AUTH_KEY_FLAG,
+            ENCRYPTION_KEY,
+            BIOMETRIC_ENABLED_KEY,
+        ]);
+
+        // Also clear biometric key from secure store
+        try {
+            const SecureStore = await import('expo-secure-store');
+            await SecureStore.deleteItemAsync('securevault.biometric-ekey');
+        } catch {
+            // expo-secure-store may not be available, ignore
+        }
     }, []);
 
     useEffect(() => {

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 
 import WatchlistFormModal from '@/components/watchlist/WatchlistFormModal';
 import WatchlistDeleteModal from '@/components/watchlist/WatchlistDeleteModal';
@@ -78,7 +78,7 @@ export default function WatchlistScreen() {
             setItems(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Watchlist fetch failed', error);
-            Toast.show({ type: 'error', text1: 'Unable to load watchlist.' });
+            toast.error('Unable to load watchlist.');
         } finally { setLoading(false); }
     }, []);
 
@@ -88,9 +88,9 @@ export default function WatchlistScreen() {
         showLoading('Adding...');
         try {
             await api.post('/watchlist/add', item);
-            Toast.show({ type: 'success', text1: 'Added!' });
+            toast.success('Added!');
             await fetchItems();
-        } catch { Toast.show({ type: 'error', text1: 'Unable to add.' }); }
+        } catch { toast.error('Unable to add.'); }
         finally { hideLoading(); }
     }, [fetchItems, hideLoading, showLoading]);
 
@@ -99,10 +99,10 @@ export default function WatchlistScreen() {
         showLoading('Updating...');
         try {
             await api.put(`/watchlist/update/${editItem._id}`, item);
-            Toast.show({ type: 'success', text1: 'Updated!' });
+            toast.success('Updated!');
             setEditItem(null);
             await fetchItems();
-        } catch { Toast.show({ type: 'error', text1: 'Unable to update.' }); }
+        } catch { toast.error('Unable to update.'); }
         finally { hideLoading(); }
     }, [editItem, fetchItems, hideLoading, showLoading]);
 
@@ -111,10 +111,10 @@ export default function WatchlistScreen() {
         showLoading('Removing...');
         try {
             await api.delete(`/watchlist/delete/${deleteItem._id}`);
-            Toast.show({ type: 'success', text1: `${deleteItem.title} removed.` });
+            toast.success(`${deleteItem.title} removed.`);
             setDeleteItem(null);
             await fetchItems();
-        } catch { Toast.show({ type: 'error', text1: 'Unable to delete.' }); }
+        } catch { toast.error('Unable to delete.'); }
         finally { hideLoading(); }
     }, [deleteItem, fetchItems, hideLoading, showLoading]);
 
@@ -123,15 +123,15 @@ export default function WatchlistScreen() {
         try {
             await api.put(`/watchlist/update/${item._id}`, { status: newStatus });
             setItems((prev) => prev.map((i) => i._id === item._id ? { ...i, status: newStatus } : i));
-        } catch { Toast.show({ type: 'error', text1: 'Unable to update.' }); }
+        } catch { toast.error('Unable to update.'); }
     }, []);
 
     const handleToggleNews = useCallback(async (item: WatchlistItem) => {
         try {
             await api.put(`/watchlist/update/${item._id}`, { subscribeNews: !item.subscribeNews });
             setItems((prev) => prev.map((i) => i._id === item._id ? { ...i, subscribeNews: !i.subscribeNews } : i));
-            Toast.show({ type: 'success', text1: item.subscribeNews ? 'Unsubscribed' : 'Subscribed to news' });
-        } catch { Toast.show({ type: 'error', text1: 'Failed.' }); }
+            toast.success(item.subscribeNews ? 'Unsubscribed' : 'Subscribed to news');
+        } catch { toast.error('Failed.'); }
     }, []);
 
     const handleTogglePart = useCallback(async (item: WatchlistItem, partIndex: number) => {
@@ -143,7 +143,7 @@ export default function WatchlistScreen() {
             const watchedCount = updatedParts.filter((p) => p.watched).length;
             const newStatus = watchedCount === 0 ? 'to_watch' : watchedCount === updatedParts.length ? 'watched' : 'watching';
             setItems((prev) => prev.map((i) => i._id === item._id ? { ...i, parts: updatedParts, status: newStatus } : i));
-        } catch { Toast.show({ type: 'error', text1: 'Unable to update.' }); }
+        } catch { toast.error('Unable to update.'); }
     }, []);
 
     const renderItem = useCallback(({ item }: { item: WatchlistItem }) => {
