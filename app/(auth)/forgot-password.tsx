@@ -82,7 +82,7 @@ export default function ForgotPasswordScreen() {
                         {stage === 'email' && (
                             <>
                                 <Text style={styles.formTitle}>Reset your password</Text>
-                                <Text style={styles.formCaption}>Enter your email and we'll send you a verification code.</Text>
+                                <Text style={styles.formCaption}>Enter your email and we&apos;ll send you a verification code.</Text>
                                 <View style={styles.fieldGroup}>
                                     <Text style={styles.label}>Email</Text>
                                     <TextInput value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={colors.placeholder} style={styles.input} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} returnKeyType="done" onSubmitEditing={handleSendOtp} />

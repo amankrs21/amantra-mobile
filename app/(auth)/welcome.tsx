@@ -160,7 +160,7 @@ export default function WelcomeScreen() {
                         </Pressable>
 
                         <Pressable onPress={() => router.push('/(auth)/register')} style={styles.linkRow}>
-                            <Text style={styles.linkText}>Don't have an account? <Text style={styles.linkBold}>Register</Text></Text>
+                            <Text style={styles.linkText}>Don&apos;t have an account? <Text style={styles.linkBold}>Register</Text></Text>
                         </Pressable>
 
                         <View style={styles.divider}>
@@ -200,10 +200,14 @@ export default function WelcomeScreen() {
                         <Text style={styles.emailLabel}>Continue with Email</Text>
                     </Pressable>
 
-                    <Pressable style={styles.googleButton} onPress={handleGoogleLogin}>
-                        <MaterialCommunityIcons name="google" size={24} color={colors.text} />
-                        <Text style={styles.googleLabel}>Continue with Google</Text>
-                    </Pressable>
+                    {Platform.OS === 'ios' ? (
+                        <Text style={styles.iosGoogleNote}>Google Sign-In coming soon for iOS. Use email login.</Text>
+                    ) : (
+                        <Pressable style={styles.googleButton} onPress={handleGoogleLogin}>
+                            <MaterialCommunityIcons name="google" size={24} color={colors.text} />
+                            <Text style={styles.googleLabel}>Continue with Google</Text>
+                        </Pressable>
+                    )}
                 </View>
             </ScrollView>
         </View>
@@ -234,6 +238,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     emailLabel: { fontSize: 17, fontWeight: '700', color: '#fff' },
     googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: c.cancelBg, borderWidth: 1, borderColor: c.border, paddingVertical: 14, borderRadius: 16, gap: 12 },
     googleLabel: { fontSize: 17, fontWeight: '600', color: c.text },
+    iosGoogleNote: { fontSize: 13, color: c.textTertiary, textAlign: 'center', paddingVertical: 8 },
     helper: { fontSize: 12, color: c.textTertiary },
     disabledButton: { opacity: 0.4 },
     linkRow: { alignItems: 'center' },
