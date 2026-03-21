@@ -49,7 +49,7 @@ export default function EncryptionKeyModal({
     const handleSubmit = async () => {
         if (!key.trim()) return;
         setIsSubmitting(true);
-        try { await onConfirm(key.trim()); setKey(''); }
+        try { await onConfirm(key.trim()); setKey(''); onClose(); }
         finally { setIsSubmitting(false); }
     };
 
