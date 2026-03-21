@@ -40,7 +40,7 @@ export default function NoteFormModal({ visible, mode, initialValues, onClose, o
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
                 <KeyboardAvoidingView
                     style={{ flex: 1, justifyContent: 'flex-end' }}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    behavior="padding"
                     keyboardVerticalOffset={0}
                 >
                 <View style={styles.sheet}>
