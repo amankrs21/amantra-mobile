@@ -101,7 +101,7 @@ export default function VaultScreen() {
     const currentFilter = activeSegment === 'passwords' ? vaultCategoryFilter : notesCategoryFilter;
     const currentSetter = activeSegment === 'passwords' ? setVaultCategoryFilter : setNotesCategoryFilter;
     const currentKeys = activeSegment === 'passwords' ? vaultSwipeKeys : notesSwipeKeys;
-    const swipePanResponder = useSwipeFilter(currentKeys, currentFilter, currentSetter);
+    const { panHandlers: swipePanHandlers, animatedStyle: swipeAnimatedStyle } = useSwipeFilter(currentKeys, currentFilter, currentSetter);
 
     // ── Filtered lists ──
     const filteredEntries = useMemo(() => {
@@ -374,7 +374,7 @@ export default function VaultScreen() {
             )}
 
             {/* List */}
-            <View style={{ flex: 1 }} {...swipePanResponder.panHandlers}>
+            <Animated.View style={[{ flex: 1 }, swipeAnimatedStyle]} {...swipePanHandlers}>
             {activeSegment === 'passwords' ? (
                 <FlatList
                     data={filteredEntries}
@@ -402,7 +402,7 @@ export default function VaultScreen() {
                     windowSize={5}
                 />
             )}
-            </View>
+            </Animated.View>
 
             {/* FAB */}
             <Pressable style={styles.fab} onPress={() => activeSegment === 'passwords' ? setAddVisible(true) : setNoteAddVisible(true)}>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     FlatList,
     Pressable,
     StyleSheet,
@@ -61,7 +62,7 @@ export default function WatchlistScreen() {
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     const swipeKeys = useMemo(() => [null, ...WATCHLIST_CATEGORIES.map((c) => c.key)] as (string | null)[], []);
-    const swipePanResponder = useSwipeFilter(swipeKeys, categoryFilter, setCategoryFilter);
+    const { panHandlers: swipePanHandlers, animatedStyle: swipeAnimatedStyle } = useSwipeFilter(swipeKeys, categoryFilter, setCategoryFilter);
 
     const filteredItems = useMemo(() => {
         let result = items;
@@ -245,7 +246,7 @@ export default function WatchlistScreen() {
             {loading ? (
                 <View style={styles.loadingState}><ActivityIndicator size="large" color={colors.accent} /></View>
             ) : (
-                <View style={{ flex: 1 }} {...swipePanResponder.panHandlers}>
+                <Animated.View style={[{ flex: 1 }, swipeAnimatedStyle]} {...swipePanHandlers}>
                 <FlatList
                     data={filteredItems}
                     keyExtractor={(item) => item._id}
@@ -258,7 +259,7 @@ export default function WatchlistScreen() {
                     maxToRenderPerBatch={10}
                     windowSize={5}
                 />
-                </View>
+                </Animated.View>
             )}
 
             <Pressable style={styles.fab} onPress={() => setAddVisible(true)}>
