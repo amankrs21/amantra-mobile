@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     FlatList,
     Linking,
     Pressable,
@@ -54,7 +55,7 @@ export default function NewsletterScreen() {
     const [hasWatchlistFetched, setHasWatchlistFetched] = useState(false);
 
     const tabKeys = useMemo(() => TABS.map((t) => t.key), []);
-    const swipePanResponder = useSwipeFilter(tabKeys, activeTab, setActiveTab);
+    const { panHandlers: swipePanHandlers, animatedStyle: swipeAnimatedStyle } = useSwipeFilter(tabKeys, activeTab, setActiveTab);
 
     // Filtered articles — local filtering, no API call
     const displayedArticles = useMemo(() => {
@@ -175,21 +176,21 @@ export default function NewsletterScreen() {
                     <Text style={styles.loadingText}>Fetching & curating news...</Text>
                 </View>
             ) : (
-                <View style={{ flex: 1 }} {...swipePanResponder.panHandlers}>
-                <FlatList
-                    data={displayedArticles}
-                    keyExtractor={(item, index) => `${item.url}-${index}`}
-                    contentContainerStyle={displayedArticles.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 40 }}
-                    renderItem={renderArticle}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
-                    ListEmptyComponent={() => (
-                        <EmptyState icon="newspaper-variant-outline" title="No news to show" subtitle="Pull to refresh or check back later." />
-                    )}
-                    removeClippedSubviews={true}
-                    maxToRenderPerBatch={8}
-                    windowSize={5}
-                />
-                </View>
+                <Animated.View style={[{ flex: 1 }, swipeAnimatedStyle]} {...swipePanHandlers}>
+                    <FlatList
+                        data={displayedArticles}
+                        keyExtractor={(item, index) => `${item.url}-${index}`}
+                        contentContainerStyle={displayedArticles.length === 0 ? styles.emptyList : { gap: 10, paddingBottom: 40 }}
+                        renderItem={renderArticle}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.accent} />}
+                        ListEmptyComponent={() => (
+                            <EmptyState icon="newspaper-variant-outline" title="No news to show" subtitle="Pull to refresh or check back later." />
+                        )}
+                        removeClippedSubviews={true}
+                        maxToRenderPerBatch={8}
+                        windowSize={5}
+                    />
+                </Animated.View>
             )}
         </View>
     );

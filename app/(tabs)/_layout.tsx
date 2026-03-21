@@ -51,12 +51,15 @@ export default function TabLayout() {
         toast.success('Encryption key unlocked.');
         setShowPinPrompt(false);
 
-        if (bioAvailable && !bioEnabled) {
-          const enrolled = await enableBiometric(candidate);
-          if (enrolled) {
-            toast.success('Biometric unlock enabled!');
+        // Biometric enrollment happens after modal is closed to avoid race conditions
+        setTimeout(async () => {
+          if (bioAvailable && !bioEnabled) {
+            const enrolled = await enableBiometric(candidate);
+            if (enrolled) {
+              toast.success('Biometric unlock enabled!');
+            }
           }
-        }
+        }, 300);
       } catch {
         toast.error('Invalid encryption key.');
       }
